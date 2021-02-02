@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     int res, i = 0;
     char cmd[60];
     fd_set fds;
-    Cliente c,cr;
+    Cliente c, cr;
     struct timeval tempo;
 
     if (signal(SIGINT, trataSig) == SIG_ERR)
@@ -55,34 +55,33 @@ int main(int argc, char *argv[])
         fprintf(stderr, "\n[ERRO] NAO HA NENHUM SERVIDOR!\n");
         exit(EXIT_FAILURE);
     }
-   
 
     menu_comandos();
 
     c.pid_cliente = getpid();
     sprintf(fifo_name, FIFO_CLI, c.pid_cliente);
-     if (access(fifo_name, F_OK) == 0)
+    if (access(fifo_name, F_OK) == 0)
     {
         fprintf(stderr, "\n[ERRO] CLIENTE JA EXISTE!\n");
         exit(EXIT_FAILURE);
     }
     mkfifo(fifo_name, 0600);
     fd_cli = open(fifo_name, O_RDWR);
-    fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
+    //fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
 
     strcpy(c.cmd, "");
     strcpy(c.jogoAtribuido, "");
 
-    printf("\nIntroduza o seu nome: ");
+    printf("\nINTRODUZA O SEU NOME: ");
     scanf("%s", c.nome);
     fflush(stdout);
 
     //ABRE O FIFO DO SERV PARA ENVIO DO NOME
     fd_ser = open(FIFO_SERV, O_WRONLY);
-    printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
+    // printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
 
     res = write(fd_ser, &c, sizeof(Cliente));
-    printf("\nENVIEI %s ", c.nome);
+    //printf("\nENVIEI %s ", c.nome);
     close(fd_ser);
 
     do
@@ -99,19 +98,20 @@ int main(int argc, char *argv[])
 
         res = select(fd_cli + 1, &fds, NULL, NULL, &tempo);
 
-        if (res == 0)
+        /* if (res == 0)
         {
             printf("NAO HA DADOS \n");
-        }
+        } */
 
         if (res > 0 && FD_ISSET(0, &fds))
         {
+
             scanf("%s", c.cmd);
             //printf("TESTE SCANF %s\n", c.cmd);
 
             //ABRE O FIFO DO SERV PARA ENVIO DO NOME
             fd_ser = open(FIFO_SERV, O_WRONLY);
-            printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
+            //printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
 
             res = write(fd_ser, &c, sizeof(Cliente));
             //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);
@@ -125,12 +125,11 @@ int main(int argc, char *argv[])
 
             if (strcmp(cr.jogoAtribuido, "quit") == 0)
             {
-                printf("%d, comando: ");
                 sair();
             }
             else
             {
-                printf("\n%s, tem este jogo atribuido: %s\n", cr.nome, cr.jogoAtribuido);
+                printf("\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", cr.nome, cr.jogoAtribuido);
             }
         }
 

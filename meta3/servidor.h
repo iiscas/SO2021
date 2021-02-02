@@ -12,39 +12,34 @@
 #include<signal.h>
 #include <errno.h>
 #include <dirent.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <pthread.h>
 
-#define NTHREAD 2
-
-
-int maxplayer = 30;
-char gamedir[60]="./jogos/";
+int nthread;
+#define NTHREAD nthread
 #define MAX 80
-#define MAXPLAYER maxplayer
-#define GAMEDIR gamedir
-
-
-
 //nome do fifo de cada cliente
 #define FIFO_CLI "CLI%d"
 //nome do fifo do servidor
 #define FIFO_SERV "SERV"
 #define FIFO_ANON "ANON"
-
-
+int FLAG_SHUTDOWN = 0;
+int FLAG_ADICIONA = 0;
+int FLAG_CAMPEONATO=0;
+int fd_ser, fd_cli;
 
 // PEDIDO CLIENTE -> SERVIDOR
 typedef struct  {
     pid_t pid_cliente;
     char nome[MAX];
     char jogoAtribuido[MAX]; 
-    char cmd[80];
+    char cmd[MAX];
 }Cliente;
+
+//RESPOSTA SERVIDOR -> CLIENTE
+typedef struct{
+    int nJogos;
+    char cmd[80];
+    char jogos[2];
+    int nClientesAtivos;
+    Cliente num_jogadores[30];
+}Servidor;
