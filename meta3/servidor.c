@@ -166,53 +166,69 @@ typedef struct
 {
     char jogo;
     char continua;
-    pthread_mutex_t *trinco;
+    pid_t pid[2];
+    char resposta;
 } TJOGOS;
 
+ int p[2], r[2];
+ int filho;
 
 void *mostra(void *dados)
 {
     int i, *res;
     TJOGOS *pJogos;
     pJogos = (TJOGOS *)dados;
-    int p[2], r[2];
-    int filho;
+   
     int estado;
-    do
-    {
-        pthread_mutex_lock(pJogos->trinco);
-        for (i = 0; i < 3; i++)
+    int tentativa=0;
+    char input[2048];
+
+    int pid_filho;
+    
+       // pthread_mutex_lock(pJogos->trinco);
+
+        pipe(p);
+        pipe(r);
+        pid_filho = fork();
+        if (pid_filho == 0)
         {
-            printf("--> %c\n", pJogos->jogo);
-            int estado, num;
 
-            pipe(p);
-            pipe(r);
-            filho = fork();
-            if (filho == 0)
-            {
-                execl("./jogos/g_1", "g_1", NULL);
-                close(0);    //FECHAR ACESSO AO TECLADO
-                dup(p[0]);   //DUPLICAR P[0] NA PRIMEIRA POSICAO DISPONIVEL
-                close(p[0]); //FECHAR EXTREMIDADE DE LEITURA DO PIPE
-                close(p[1]); //FECHAR EXTREMIDADE DE ESCRITA DO PIPE
+            close(0);    //FECHAR ACESSO AO TECLADO
+            dup(p[0]);   //DUPLICAR P[0] NA PRIMEIRA POSICAO DISPONIVEL
+            close(p[0]); //FECHAR EXTREMIDADE DE LEITURA DO PIPE
+            close(p[1]); //FECHAR EXTREMIDADE DE ESCRITA DO PIPE
 
-                
-                
-                close(1);    //FECHAR ACESSO AO MONITOR
-                dup(r[1]);   //DUPLICAR P[1] NA PRIMEIRA POSICAO DISPONIVEL
-                close(r[0]); //FECHAR EXTREMIDADE DE LEITURA DO PIPE
-                close(r[1]); //FECHAR EXTREMIDADE DE ESCRITA DO PIPE */
-            }
-            close(p[0]);
-            close(r[1]);
-            wait(&estado);
-            fflush(stdout);
-            sleep(1);
+            close(1);    //FECHAR ACESSO AO MONITOR
+            dup(r[1]);   //DUPLICAR P[1] NA PRIMEIRA POSICAO DISPONIVEL
+            close(r[0]); //FECHAR EXTREMIDADE DE LEITURA DO PIPE
+            close(r[1]); //FECHAR EXTREMIDADE DE ESCRITA DO PIPE */
+            execl("./jogos/g_2", "g_2", NULL);
+            perror("NAO CONSEGUI LANCAR JOGO ");
+            exit(1);
         }
-        pthread_mutex_unlock(pJogos->trinco);
-
-    } while (pJogos->continua);
+        else
+        {
+            close(p[0]);
+            close(r[1]); 
+            tentativa=read(r[0], input, sizeof(input));
+            input[tentativa]='\0';
+            printf("\nINPUT:>%s\n", input);
+            printf("\nTENTATIVA: -->%d\n", tentativa);
+            
+        }
+        
+        do {
+            printf("...\n"); fflush(stdout);
+            tentativa=write(p[1],input,sizeof(input));
+            
+            sleep(1);
+        } while (pJogos->continua!=0);
+        
+        kill(pid_filho, SIGUSR1);
+        printf("e para terminar. Vou aguardar que o filho/jogo termine\n"); fflush(stdout);
+        wait(&estado);
+        printf("jogo terminou com codigo %d\n", WEXITSTATUS(estado)); fflush(stdout);
+        
 
     res = (int *)malloc(sizeof(int));
     *res = 123;
@@ -226,6 +242,50 @@ int main(int argc, char *argv[])
     s.nClientesAtivos = 0;
     int duracao, tempo_espera, i = 0, res, r, fds_anon, canal[2], res_canal, n, estado;
     char *ptr, *ptr1, *ptr2, fifo_name[20], cmd[90];
+
+    nthread=1;
+    char str[40];
+    int z, *resultado;
+    TJOGOS tinfo[nthread];
+    pthread_t tarefa[nthread];
+    //pthread_mutex_t trinco;
+
+    printf("PID MAIN: %d\n", getpid());
+
+    srand((unsigned int)time(NULL));
+    
+    for (z = 0; z < nthread; z++)
+    {
+        
+        tinfo[z].jogo = '2';
+        tinfo[z].continua = 1;
+     
+        pthread_create(&tarefa[z], NULL, mostra, (void *)&tinfo[z]);
+    }
+
+    do
+    {
+        printf("\n----PAI---\n");
+        printf("COMANDO: ");
+        scanf("%s", str);
+        printf("\nRecebi o comando '%s'...\n", str);
+        printf("-----------");
+    } while (strcmp(str, "sair") != 0);
+
+    for (z = 0; z < nthread; z++)
+    {
+        printf("Vou pedir a thread %d para terminar\n", z);
+        fflush(stdout);
+        tinfo[z].continua = 0;
+        pthread_join(tarefa[z], (void *)&resultado);
+        printf("....terminou! (%d)\n", *resultado);
+        free(resultado);
+    }
+   
+
+    if (FLAG_SHUTDOWN == 1)
+        end();
+
 
     fd_set fds;
     struct timeval tempo;
@@ -424,47 +484,9 @@ int main(int argc, char *argv[])
             }
         }
         nthread = s.nClientesAtivos;
+        
     } while (/* FLAG_SHUTDOWN != 1 ||  */ FLAG_CAMPEONATO != 1);
 
     //THREADS
-    char str[40];
-    int z, *resultado;
-    TJOGOS tinfo[nthread];
-    pthread_t tarefa[nthread];
-    pthread_mutex_t trinco;
-
-    printf("PID: %d\n", getpid());
-
-    srand((unsigned int)time(NULL));
-    pthread_mutex_init(&trinco, NULL);
-    for (z = 0; z < nthread; z++)
-    {
-        printf("\naqui");
-        tinfo[z].jogo = '1';
-        tinfo[z].continua = 1;
-        tinfo[z].trinco = &trinco;
-        pthread_create(&tarefa[z], NULL, mostra, (void *)&tinfo[z]);
-    }
-
-   /*  do
-    {
-        printf("COMANDO: ");
-        scanf("%s", str);
-        printf("\nRecebi o comando '%s'...\n", str);
-
-    } while (strcmp(str, "sair") != 0); */
-
-    for (z = 0; z < nthread; z++)
-    {
-        printf("Vou pedir a thread %d para terminar", z);
-        fflush(stdout);
-        tinfo[z].continua = 0;
-        pthread_join(tarefa[z], (void *)&resultado);
-        printf("....terminou! (%d)\n", *resultado);
-        free(resultado);
-    }
-    pthread_mutex_destroy(&trinco);
-
-    if (FLAG_SHUTDOWN == 1)
-        end();
+    
 }

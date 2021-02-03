@@ -25,7 +25,7 @@ void atendeSinal(int signal){
 int main()
 {
 	int prog, jogador, escolha, resultado,i;
-	printf("PID: %d\n",getpid());
+	//printf("PID: %d\n",getpid());
 	signal(SIGUSR1,atendeSinal);
 	if (signal(SIGUSR1,atendeSinal) == SIG_ERR) {
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");

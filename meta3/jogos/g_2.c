@@ -13,7 +13,8 @@ int FLAG_TERMINA = 0;
 
 void atendeSinal(int signal)
 {
-	printf("\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
+	fprintf(stderr,"\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
+	fflush(stderr);
 	FLAG_TERMINA = 1;
 	exit(pontos);
 }
@@ -23,7 +24,8 @@ int main()
 	int prog, escolha, i;
 
 	printf("PID: %d\n", getpid());
-	signal(SIGUSR1, atendeSinal);
+	fflush(stdout);
+	//signal(SIGUSR1, atendeSinal);
 	if (signal(SIGUSR1, atendeSinal) == SIG_ERR)
 	{
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");
@@ -37,14 +39,14 @@ int main()
 
 	do
 	{
-		printf("\nDigite um numero entre 0 e 100\n");
+		printf("\nDigite um numero entre 0 e 10\n");
 		scanf("%d", &escolha);
 
-		if (escolha >= 0 && escolha <= 100)
+		if (escolha >= 0 && escolha <= 2)
 		{
 
 			srand((unsigned)time(NULL));
-			prog = rand() % 100;
+			prog = rand() % 2;
 
 			if (escolha == prog)
 			{
