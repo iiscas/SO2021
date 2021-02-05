@@ -6,11 +6,11 @@ typedef struct
     char continua;
     pthread_mutex_t *trinco;
 } TDATA;
-void findJogos()
+int findJogos()
 {
     DIR *folder;
     struct dirent *entry;
-    int files = 0;
+    int files = 1;
 
     folder = opendir("./jogos");
     if (folder == NULL)
@@ -19,17 +19,58 @@ void findJogos()
         //return(1);
     }
 
-    while ((entry = readdir(folder)))
+    while ((entry=readdir(folder))!=NULL)
     {
-        files++;
-        if ((strcmp(entry->d_name, "g_1.c") == 0) || (strcmp(entry->d_name, "g_2.c") == 0))
+        
+        if (entry->d_name[0] == 'g' && entry->d_name[strlen(entry->d_name) - 1] == 'c')
         {
-            printf(" - %s\n",
-                   entry->d_name);
+            printf(" - %s\n", entry->d_name);
         }
+        files++;
     }
 
     closedir(folder);
+    return files;
+    
+}
+char randomJogo()
+{
+    srand(time(NULL));
+    DIR *jogo;
+    struct dirent* dirJogos;
+    int jogoAtual = 1;
+    int jogoRandom;
+    int nJogos = findJogos();
+
+    //NUMERO RANDOM ENTRE 1 O NUMERO DE FILES LIDOS
+    jogoRandom = rand() % nJogos;
+
+    printf("Jogos disponiveis: %d\n", nJogos);
+    printf("Numero random: %d\n", jogoRandom);
+
+    jogo = opendir("./jogos");
+    if (jogo)
+    {
+        while ((dirJogos = readdir(jogo)) != NULL)
+        {
+            if (dirJogos->d_name[0] == 'g' && dirJogos->d_name[strlen(dirJogos->d_name) - 1] == 'c')
+            {
+
+                printf("Jogo Atual: %d\n", jogoAtual);
+
+                if (jogoRandom == jogoAtual)
+                {
+
+                    printf("Nome do jogo a devolver: %s\n", dirJogos->d_name);
+                    dirJogos->d_name[strlen(dirJogos->d_name) - 2] = '\0';
+                    return (*dirJogos->d_name);
+                }
+
+                jogoAtual++;
+            }
+        }
+        closedir(jogo);
+    }
 }
 void players(Servidor s)
 {
@@ -85,11 +126,6 @@ void comandosMenu()
     printf("o (Encerrar campeonato <end>)\n");
     printf("o Sair encerrando o arbitro <exit>\n");
     printf("\n---------------------------------------\n");
-}
-
-void randPorFuncao()
-{
-    srand(time(NULL));
 }
 void trataSig(int i)
 {
@@ -168,73 +204,21 @@ typedef struct
     char continua;
     pid_t pid[2];
     char resposta;
-} TJOGOS;
+} TCAMPEONATO;
 
- int p[2], r[2];
- int filho;
-
-void *mostra(void *dados)
-{
-    int i, *res;
-    TJOGOS *pJogos;
-    pJogos = (TJOGOS *)dados;
-   
-    int estado;
-    int tentativa=0;
-    char input[2048];
-
-    int pid_filho;
-    
-       // pthread_mutex_lock(pJogos->trinco);
-
-        pipe(p);
-        pipe(r);
-        pid_filho = fork();
-        if (pid_filho == 0)
-        {
-
-            close(0);    //FECHAR ACESSO AO TECLADO
-            dup(p[0]);   //DUPLICAR P[0] NA PRIMEIRA POSICAO DISPONIVEL
-            close(p[0]); //FECHAR EXTREMIDADE DE LEITURA DO PIPE
-            close(p[1]); //FECHAR EXTREMIDADE DE ESCRITA DO PIPE
-
-            close(1);    //FECHAR ACESSO AO MONITOR
-            dup(r[1]);   //DUPLICAR P[1] NA PRIMEIRA POSICAO DISPONIVEL
-            close(r[0]); //FECHAR EXTREMIDADE DE LEITURA DO PIPE
-            close(r[1]); //FECHAR EXTREMIDADE DE ESCRITA DO PIPE */
-            execl("./jogos/g_2", "g_2", NULL);
-            perror("NAO CONSEGUI LANCAR JOGO ");
-            exit(1);
-        }
-        else
-        {
-            close(p[0]);
-            close(r[1]); 
-            tentativa=read(r[0], input, sizeof(input));
-            input[tentativa]='\0';
-            printf("\nINPUT:>%s\n", input);
-            printf("\nTENTATIVA: -->%d\n", tentativa);
-            
-        }
-        
-        do {
-            printf("...\n"); fflush(stdout);
-            tentativa=write(p[1],input,sizeof(input));
-            
-            sleep(1);
-        } while (pJogos->continua!=0);
-        
-        kill(pid_filho, SIGUSR1);
-        printf("e para terminar. Vou aguardar que o filho/jogo termine\n"); fflush(stdout);
-        wait(&estado);
-        printf("jogo terminou com codigo %d\n", WEXITSTATUS(estado)); fflush(stdout);
-        
-
-    res = (int *)malloc(sizeof(int));
-    *res = 123;
-    pthread_exit((void *)res);
+int p[2], r[2];
+int filho;
+void ClienteServidor(void* list){
+    Cliente msgForCliente;
+    Servidor msgForServidor;
+    char fifo_name_cli[50];
+    int tempo=0;
+    //THREAD
+    pthread_t campeonatoT;
+    do{
+        read(fd_ser,&msgForServidor,sizeof(msgForServidor));
+    }
 }
-
 int main(int argc, char *argv[])
 {
     Cliente c;
@@ -243,49 +227,12 @@ int main(int argc, char *argv[])
     int duracao, tempo_espera, i = 0, res, r, fds_anon, canal[2], res_canal, n, estado;
     char *ptr, *ptr1, *ptr2, fifo_name[20], cmd[90];
 
-    nthread=1;
+    nthread = 1;
     char str[40];
     int z, *resultado;
-    TJOGOS tinfo[nthread];
+    TCAMPEONATO jogador[nthread];
     pthread_t tarefa[nthread];
     //pthread_mutex_t trinco;
-
-    printf("PID MAIN: %d\n", getpid());
-
-    srand((unsigned int)time(NULL));
-    
-    for (z = 0; z < nthread; z++)
-    {
-        
-        tinfo[z].jogo = '2';
-        tinfo[z].continua = 1;
-     
-        pthread_create(&tarefa[z], NULL, mostra, (void *)&tinfo[z]);
-    }
-
-    do
-    {
-        printf("\n----PAI---\n");
-        printf("COMANDO: ");
-        scanf("%s", str);
-        printf("\nRecebi o comando '%s'...\n", str);
-        printf("-----------");
-    } while (strcmp(str, "sair") != 0);
-
-    for (z = 0; z < nthread; z++)
-    {
-        printf("Vou pedir a thread %d para terminar\n", z);
-        fflush(stdout);
-        tinfo[z].continua = 0;
-        pthread_join(tarefa[z], (void *)&resultado);
-        printf("....terminou! (%d)\n", *resultado);
-        free(resultado);
-    }
-   
-
-    if (FLAG_SHUTDOWN == 1)
-        end();
-
 
     fd_set fds;
     struct timeval tempo;
@@ -328,7 +275,8 @@ int main(int argc, char *argv[])
     //IMPRIME CONFIGURAÇÕES E COMANDOS
     settings(duracao, tempo_espera);
     comandosMenu();
-
+    //findJogos();
+    //randomJogo();
     //SELECT PARA LER DO TECLADO E COMANDOS DOS CLIENTES ( NA FASE DE CONFIGURAÇÕES APENAS?)
     do
     {
@@ -484,9 +432,6 @@ int main(int argc, char *argv[])
             }
         }
         nthread = s.nClientesAtivos;
-        
-    } while (/* FLAG_SHUTDOWN != 1 ||  */ FLAG_CAMPEONATO != 1);
 
-    //THREADS
-    
+    } while (/* FLAG_SHUTDOWN != 1 ||  */ FLAG_CAMPEONATO != 1);
 }
