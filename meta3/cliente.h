@@ -25,7 +25,7 @@ typedef struct
 {
     pid_t pid_cliente;
     char nome[MAX];
-    char jogoAtribuido[MAX];
+    int contador;
     char cmd[MAX];
 } Cliente;
 

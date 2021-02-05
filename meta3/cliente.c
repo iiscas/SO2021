@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     //fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
 
     strcpy(c.cmd, "");
-    strcpy(c.jogoAtribuido, "");
+    //strcpy(c.jogoAtribuido, "");
 
     printf("\nINTRODUZA O SEU NOME: ");
     scanf("%s", c.nome);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
             close(fd_ser);
         }
 
-        else if (res > 0 && FD_ISSET(fd_cli, &fds))
+        /* else if (res > 0 && FD_ISSET(fd_cli, &fds))
         {
             //RECEBE RESPOSTA DO SERVIDOR
             res = read(fd_cli, &cr, sizeof(Cliente));
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
             {
                 printf("\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", cr.nome, cr.jogoAtribuido);
             }
-        }
+        } */
 
     } while (FLAG_SHUTDOWN != 1);
 
