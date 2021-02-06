@@ -31,7 +31,6 @@ int fd_ser, fd_cli;
 typedef struct  {
     pid_t pid_cliente;
     char nome[MAX];
-    int contador;
     char cmd[MAX];
 }Cliente;
 
@@ -40,6 +39,6 @@ typedef struct{
     int nJogos;
     char cmd[80];
     char jogos[2];
-    int nClientesAtivos;
-    Cliente num_jogadores[30];
+   // int nClientesAtivos;
+    Cliente jogador;
 }Servidor;

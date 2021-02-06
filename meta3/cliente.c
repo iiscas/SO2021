@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 {
     int res, i = 0;
     char cmd[60];
-    fd_set fds;
+    //fd_set fds;
     Cliente c, cr;
     struct timeval tempo;
 
@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
         perror("\nNAO FOI POSSIVEL CONFIGURAR SINAL SIGNINT!\n");
         exit(EXIT_FAILURE);
     }
+
     if (access(FIFO_SERV, F_OK) != 0)
     {
         fprintf(stderr, "\n[ERRO] NAO HA NENHUM SERVIDOR!\n");
@@ -57,86 +58,86 @@ int main(int argc, char *argv[])
     }
 
     menu_comandos();
-
-    c.pid_cliente = getpid();
+    strcpy(c.cmd, "");
+    c.pid_cliente = getpid(); //identifica o cliente
     sprintf(fifo_name, FIFO_CLI, c.pid_cliente);
-    if (access(fifo_name, F_OK) == 0)
+
+    if (mkfifo(fifo_name, 0600) < 0)
     {
-        fprintf(stderr, "\n[ERRO] CLIENTE JA EXISTE!\n");
+        perror("\n Erro ao criar o FIFO do cliente.\n");
         exit(EXIT_FAILURE);
     }
-    mkfifo(fifo_name, 0600);
-    fd_cli = open(fifo_name, O_RDWR);
-    //fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
+    fprintf(stderr, "\n FIFO %s do cliente criado.\n", fifo_name);
 
-    strcpy(c.cmd, "");
-    //strcpy(c.jogoAtribuido, "");
+    fd_ser = open(FIFO_SERV, O_WRONLY); //abre o FIFO do servidor para escrita
+    if (fd_ser < 0)
+    {
+        fprintf(stderr, "\n O cliente não consegue ligar-se ao servidor.\n");
+        unlink(fifo_name);
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stderr, "\n FIFO do servidor aberto para escrita.\n");
 
-    printf("\nINTRODUZA O SEU NOME: ");
+    /* if ((fd_cli = open(fifo_name, O_RDWR)) < 0)
+    { //o fifo do cliente so le
+        perror("\n Erro ao abrir o FIFO do cliente.\n");
+        close(fd_ser);
+        unlink(fifo_name);
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stderr, "\n FIFO do Cliente aberto para leitura.\n"); */
+
+    //A este ponto o cliente pode escrever no fifo do servidor, que este vai poder ler
+    //E pode ler o fifo do cliente, no qual o servidor vai estar a escrever
+
+    printf("Nome de utilizador: ");
     scanf("%s", c.nome);
     fflush(stdout);
-
-    //ABRE O FIFO DO SERV PARA ENVIO DO NOME
-    fd_ser = open(FIFO_SERV, O_WRONLY);
-    // printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
-
+    strcpy(c.cmd, c.nome);
+    printf("Nome de utilizador---> : %s", c.nome);
     res = write(fd_ser, &c, sizeof(Cliente));
-    //printf("\nENVIEI %s ", c.nome);
+    printf("\nENVIEI %s %d %s", c.nome,c.pid_cliente,c.cmd);
     close(fd_ser);
-
-    do
+    sleep(10);
+    /* fd_ser = open(FIFO_SERV, O_WRONLY);                      // Indica ao árbitro que é a primeira mensagem que envia.
+    write(fd_ser, &c, sizeof(Cliente));      //escreve no fifo do servidor para ele ler usando a mensagem para servidor
+    res = read(fd_cli, &c, sizeof(Cliente)); */  //le a mensagem do server no pipe do cliente
+   /*  if (res == sizeof(Cliente))
     {
-        printf("\n%s, INTRODUZA UM COMANDO: ", c.nome);
+        fprintf(stderr, "\nO cliente recebeu mensagem do servidor.\n");
+        fprintf(stderr, c.cmd);
+    }
+    else
+    {
+        fprintf(stderr, "\nO servidor não conseguiu entregar a mensagem ao cliente.\n");
+    } */
 
-        fflush(stdout);
-        FD_ZERO(&fds);
-        FD_SET(0, &fds);
-        FD_SET(fd_cli, &fds);
-
-        tempo.tv_sec = 20; //vai buscar valor pela linha de comandos
-        tempo.tv_usec = 0;
-
-        res = select(fd_cli + 1, &fds, NULL, NULL, &tempo);
-
-        /* if (res == 0)
+   /*  while (1)
+    {
+        scanf("%s", c.cmd); //input do user
+        c.contador = 1;     // A partir daqui todas as mensagens são comandos.
+        if (strcmp(c.cmd, "fim") == 0)
         {
-            printf("NAO HA DADOS \n");
-        } */
-
-        if (res > 0 && FD_ISSET(0, &fds))
-        {
-
-            scanf("%s", c.cmd);
-            //printf("TESTE SCANF %s\n", c.cmd);
-
-            //ABRE O FIFO DO SERV PARA ENVIO DO NOME
-            fd_ser = open(FIFO_SERV, O_WRONLY);
-            //printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
-
-            res = write(fd_ser, &c, sizeof(Cliente));
-            //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);
-            close(fd_ser);
+            break; //se fim vai fechar pipes e sair
         }
+        write(fd_ser, &c, sizeof(Cliente)); //escreve no fifo do servidor para ele ler usando a mensagem para servidor
 
-        /* else if (res > 0 && FD_ISSET(fd_cli, &fds))
+        res = read(fd_cli, &c, sizeof(Cliente)); //le a mensagem do server no pipe do cliente
+        if (res == sizeof(Cliente))
         {
-            //RECEBE RESPOSTA DO SERVIDOR
-            res = read(fd_cli, &cr, sizeof(Cliente));
+            fprintf(stderr, "\nO cliente recebeu mensagem do servidor.\n");
+            fprintf(stderr, c.cmd);
+        }
+        else
+        {
+            fprintf(stderr, "\nO servidor não conseguiu entregar a mensagem ao cliente.\n");
+        }
+    } */
 
-            if (strcmp(cr.jogoAtribuido, "quit") == 0)
-            {
-                sair();
-            }
-            else
-            {
-                printf("\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", cr.nome, cr.jogoAtribuido);
-            }
-        } */
-
-    } while (FLAG_SHUTDOWN != 1);
-
-    close(fd_cli);
+    /* close(fd_cli);
     unlink(fifo_name);
     unlink(FIFO_SERV);
-    exit(0);
+    remove(fifo_name);
+
+    exit(0); */
 }
