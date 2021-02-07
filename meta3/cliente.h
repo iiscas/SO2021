@@ -14,7 +14,7 @@
 #include <dirent.h>
 #include <pthread.h>
 
-#define MAX 80
+#define MAX 2048
 //nome do fifo de cada cliente
 #define FIFO_CLI "CLI%d"
 //nome do fifo do servidor
@@ -23,9 +23,11 @@
 // PEDIDO CLIENTE -> SERVIDOR
 typedef struct
 {
-    pid_t pid_cliente;
+    int pid_cliente;
     char nome[MAX];
     char cmd[MAX];
+    int acesso; // ver se é a primeira msg
+    char jogo[MAX];
 } Cliente;
 
 //RESPOSTA SERVIDOR -> CLIENTE

@@ -23,26 +23,27 @@ int main()
 {
 	int prog, escolha, i;
 
-	printf("PID: %d\n", getpid());
-	fflush(stdout);
+	//printf("PID: %d\n", getpid());
+	
 	//signal(SIGUSR1, atendeSinal);
 	if (signal(SIGUSR1, atendeSinal) == SIG_ERR)
 	{
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "\nSINAL CONFIGURADO\n");
-
+	//fprintf(stderr, "\nSINAL CONFIGURADO\n");
+	//fflush(stdout);
 	printf("-----BEM VINDO------\n");
 	printf("---Jogo Adivinha o Numero---\n");
 	printf("\nO jogador ganha caso acerte\nno numero que o computador 'pensou'!\n");
-
+	fflush(stdout);
 	do
 	{
-		printf("\nDigite um numero entre 0 e 10\n");
+		printf("\nDigite um numero entre 0 e 2\n");
+		fflush(stdout);
 		scanf("%d", &escolha);
 
-		if (escolha >= 0 && escolha <= 2)
+		if (escolha > 0 && escolha <= 2)
 		{
 
 			srand((unsigned)time(NULL));

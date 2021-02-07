@@ -26,27 +26,27 @@ int main()
 {
 	int prog, jogador, escolha, resultado,i;
 	//printf("PID: %d\n",getpid());
-	signal(SIGUSR1,atendeSinal);
+	//(SIGUSR1,atendeSinal);
 	if (signal(SIGUSR1,atendeSinal) == SIG_ERR) {
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");
 		exit(EXIT_FAILURE);
 	}
 	//fprintf(stderr,"\nSINAL CONFIGURADO\n");
 
-	fprintf(stderr,"-------------------------------");
-	fprintf(stderr,"\n-----BEM VINDO AO JOGO------\n");
-	fprintf(stderr,"---Jogo PAR ou IMPAR---\n");
-	fprintf(stderr,"\nO jogador ganha caso a soma dos numeros\nseja par/impar consoante o que escolheu!\n");
+	printf("-----BEM VINDO------\n");
+	printf("---Jogo ADIVINHA O NUMERO---\n");
+	printf("\nO jogador ganha caso a soma dos numeros\nseja par/impar consoante o que escolheu!\n");
+	fflush(stdout);
 	
 	do
 	{
-		fprintf(stderr,"\nEscolha par(0) ou ímpar(1): ");
+		printf("\nEscolha par(0) ou ímpar(1): ");
 		fflush(stdout);
 		scanf("%d", &escolha);
 
 		if (escolha == 0 || escolha == 1)
 		{
-			fprintf(stderr,"\nEscolha a sua jogada: ");
+			printf("\nEscolha a sua jogada: ");
 			scanf("%d", &jogador);
 
 			srand((unsigned)time(NULL));
@@ -63,13 +63,13 @@ int main()
 
 			if (escolha == resultado)
 			{
-				fprintf(stderr,"Jogador ganhou!!! \n");
+				printf("Jogador ganhou!!! \n");
 				pontos++;
 			}
 
 			else
 			{
-				fprintf(stderr,"Jogador perdeu!!! \n");
+				printf("Jogador perdeu!!! \n");
 			}
 
 			printf("O num do computador escolhido foi:  %d \n", prog);

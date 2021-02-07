@@ -1,9 +1,14 @@
 #include "servidor.h"
+const char *maxplayer;
+const char *gamedir;
 Cliente c;
-Servidor s[30];
+Servidor s[MAXPLAYER];
+
 int res;
 int nClientesAtivos = 0;
-int i=0;
+int i = 0;
+int temporizador = 0;
+int tempo_espera, duracao;
 int findJogos()
 {
     DIR *folder;
@@ -69,20 +74,6 @@ char randomJogo()
         closedir(jogo);
     }
 }
-void players(Servidor s[])
-{
-    if (nClientesAtivos == 0)
-        printf("\nNAO HA JOGADORES LIGADOS!\n");
-    else
-    {
-        printf("\n==== JOGADORES NO CAMPEONATO ====\n");
-        for (int i = 0; i < nClientesAtivos; i++)
-        {
-
-            printf(" Jogador %s --- Jogo atribuido: %s \n", s[i].jogador.nome, s[i].cmd);
-        }
-    }
-}
 void games()
 {
     printf("\n---------------------\n");
@@ -99,8 +90,8 @@ void comecarCamp()
 }
 void settings(int duracao, int tempo_espera)
 {
-    const char *maxplayer = getenv("MAXPLAYER");
-    const char *gamedir = getenv("GAMEDIR");
+    maxplayer = getenv("MAXPLAYER");
+    gamedir = getenv("GAMEDIR");
 
     printf("\n=======================================");
     printf("\n======= BEM VINDO AO CHAMPION =========\n");
@@ -132,7 +123,7 @@ void trataSig(int i)
     unlink(FIFO_SERV);
     exit(EXIT_SUCCESS);
 }
-void eliminaCliente(int pid, Servidor *s)
+void eliminaCliente(int pid, Servidor s[])
 {
     int i;
     for (i = 0; i < nClientesAtivos; i++)
@@ -146,7 +137,7 @@ void eliminaCliente(int pid, Servidor *s)
         }
     }
 }
-int existeCliente(char nome[], Servidor s[])
+int existeCliente(char nome[], Servidor *s)
 {
     int i;
     for (i = 0; i < nClientesAtivos; i++)
@@ -156,28 +147,6 @@ int existeCliente(char nome[], Servidor s[])
     }
     return 0;
 }
-int adicionaCLiente(Cliente a, Servidor *s[i])
-{
-    
-    s[nClientesAtivos]->jogador = a;
-    s[nClientesAtivos]->nJogos = rand() % 2;
-    //        printf("\nNUMERO RANDOM: %d\n", s.nJogos);
-
-    if (s[0]->nJogos == 0)
-    {
-        strcpy(a.cmd, "g_1");
-        strcpy(s[nClientesAtivos]->jogador.cmd, "g_1.c");
-    }
-    else
-    {
-        strcpy(a.cmd, "g_2");
-        strcpy(s[nClientesAtivos]->jogador.cmd, "g_2.c");
-    }
-    printf("Adicionei jogador %s ---- jogo: %s\n", s[nClientesAtivos]->jogador.nome, s[nClientesAtivos]->cmd);
-    nClientesAtivos++;
-    return 1;
-}
-
 int end()
 {
     printf("A TERMINAR O SERVIDOR....ADEUS...\n");
@@ -187,79 +156,194 @@ int end()
     unlink(FIFO_SERV);
     return EXIT_SUCCESS;
 }
-
-typedef struct
+void *Jogo(void *dados)
 {
-    char jogo;
-    char continua;
-    pid_t pid[2];
-    char resposta;
-} TCAMPEONATO;
+    Servidor *s;
+    s = (Servidor *)dados;
 
-int p[2], r[2];
-int filho;
+    char j[50], str[2048], fifo_name[50];
+    int resposta, jogo[2], pid_filho;
+
+    pipe(jogo);
+    pid_filho = fork();
+    if (pid_filho == 0)
+    {
+        printf("JOGO PARA CLIENTE %s COMECOU! \n", s->jogador.nome);
+        //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+
+        close(1);       // fecha o stdout do jogo
+        close(jogo[0]); // fecha o stdin do pipe
+        dup(jogo[1]);   // coloca o stdout do pipe no stdout do jogo
+        close(jogo[1]); // fecha o stdout do pipe (o que já não precisamos de usar)
+        execl("./jogos/g_2", "g_2", NULL);
+    }
+    else
+    {
+        close(jogo[1]);
+        while (resposta = read(jogo[0], str, sizeof(str)) > 0)
+        {
+            str[resposta] = '\0';
+            strcpy(c.cmd, str);
+
+            sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
+
+            if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
+            {
+                printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+            }
+            else
+            {
+                res = write(fd_cli, &c, sizeof(Cliente));
+            }
+        }
+        close(jogo[0]);
+    }
+    if (strcmp(s->jogador.cmd, "end") == 0)
+    {
+        kill(pid_filho, SIGUSR1);
+        printf("e para terminar. Vou aguardar que o filho/jogo termine\n");
+        fflush(stdout);
+    }
+}
+void *Campeonato(void *dados)
+{
+    Servidor *s;
+    s = (Servidor *)dados;
+
+    pthread_t jogo;
+    printf("O CAMPEONATO VAI COMECAR DAQUI A %d SEGUNDOS\n", tempo_espera);
+    sleep(tempo_espera);
+    comecarCamp();
+
+    //ATRIBUIR JOGO RANDOM PARA CADA JOGADOR
+    for (int i = 0; i < nClientesAtivos; i++)
+    {
+        pthread_create(&jogo, NULL, Jogo, (void *)&s[i]);
+        //printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
+    }
+};
 void *ClienteServidor(void *dados)
 {
     //fprintf(stderr, "\n Cliente com o PID %d esta a tentar conectar.\n", s.num_jogadores[s.nClientesAtivos].pid_cliente);
-    Servidor *sClientes;
-    sClientes = (Servidor *)dados;
+    Servidor *s;
+    s = (Servidor *)dados;
     //msgForservidor=s
     char fifo_name[50];
     int r;
     char cmd[60];
     //s.nClientesAtivos = 0;
     //THREAD
-    fd_set fds;
-
     pthread_t campeonatoT;
-    struct timeval tempo;
-    printf("aqui\n");
-    
-    
-    r = read(fd_ser, &c, sizeof(Cliente)); //abre o que o fd_ser enviou
-    fprintf(stderr, "\n Cliente com o PID %d esta a tentar conectar.\n", c.pid_cliente);
-    printf("\nRECEBI DO FIFO %d -- %s----%s--- \n", c.pid_cliente, c.nome, c.cmd);
 
-   /*  if (r == sizeof(Cliente))
+    do
     {
+        r = read(fd_ser, &c, sizeof(Cliente)); //abre o fifo que recebeu do cliente
 
-        //randPorFuncao();
-        adicionaCLiente(c, &s[nClientesAtivos]);
-        fprintf(stderr, "\n%s INICIOU SESSAO\n", c.nome);
-
-        //strcpy(c.jogoAtribuido, s.num_jogadores[i].jogoAtribuido);
-        //printf("\n%s", c.jogoAtribuido);
+        if (c.acesso == 0)
+            fprintf(stderr, "\n CLIENTE %s COM PID %d QUER SE REGISTAR!\n", c.nome, c.pid_cliente);
+        else
+            fprintf(stderr, "\n COMANDO RECEBIDO DO CLIENTE COM O PID %d: [%s]\n", c.pid_cliente, c.cmd);
 
         sprintf(fifo_name, "CLI%d", c.pid_cliente);
-        //printf("NOME DO PIPE: %s\n", fifo_name);
-        fd_cli = open(fifo_name, O_WRONLY);
-        r = write(fd_cli, &c, sizeof(Cliente));
+        //printf("FIFO NAME: %s\n", fifo_name);
 
-        close(fd_cli);
-        //printf("ENVIEI ISTO %s", c.jogoAtribuido);
-        //}
-    }
-    else
-    {
-        printf("ESTRUTURA RECEBIDA COM TAMANHO DIFERENTE!\n");
-    } */
+        if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
+            perror("\n ERRO AO ABRIR FIFO CLI");
+
+        else
+        {
+            if (r == sizeof(Cliente))
+            {
+                if (nClientesAtivos < 30)
+                {
+                    if (c.acesso == 0)
+                    {
+                        if (existeCliente(c.nome, &s[nClientesAtivos]) == 0)
+                        {
+                            strcpy(s[nClientesAtivos].jogador.nome, c.nome);
+                            s[nClientesAtivos].jogador.pid_cliente = c.pid_cliente;
+                            strcpy(s[nClientesAtivos].jogador.jogo, "g_2");
+                            strcpy(c.cmd, "INICIOU SESSAO, JA PODE INSERIR COMANDOS!\n");
+                            nClientesAtivos++;
+
+                            fprintf(stderr, "\n%s INICIOU SESSAO\n", c.nome);
+                            printf("NOME DO PIPE: %s\n", fifo_name);
+                            r = write(fd_cli, &c, sizeof(Cliente));
+
+                            if (nClientesAtivos >1 && temporizador == 0)
+                            {
+                                temporizador = 1;
+                                pthread_create(&campeonatoT, NULL, Campeonato, (void *)s);
+                            }
+                        }
+                        else
+                        {
+                            kill(c.pid_cliente, SIGINT);
+                            nClientesAtivos--;
+                        }
+                    }
+
+                    if (c.acesso != 0)
+                    {
+                        //fprintf(stderr, "\nFIFO do cliente %s aberto para escrita.\n", fifo_name);
+
+                        if (strcmp(c.cmd, "#mygame") == 0)
+                        {
+                            //fprintf(stderr, "\n----FIFO do cliente %s aberto para escrita.\n", fifo_name);
+                            for (int i = 0; i < nClientesAtivos; i++)
+                            {
+                                printf("PIDS: %d \n", s[i].jogador.pid_cliente);
+                                if (c.pid_cliente == s[i].jogador.pid_cliente)
+                                {
+
+                                    strcpy(c.jogo, s[i].jogador.jogo);
+
+                                    //printf("JOGO %s \n", c.jogo);
+
+                                    r = write(fd_cli, &c, sizeof(Cliente));
+                                }
+                            }
+                        }
+                        else if (strcmp(c.cmd, "#quit") == 0)
+                        {
+                            for (int i = 0; i < nClientesAtivos; i++)
+                            {
+                                if (c.pid_cliente == s[i].jogador.pid_cliente)
+                                {
+                                    printf("\n%s PRETENDE DESISTIR DO CAMPEONATO!\n", s[i].jogador.nome);
+                                    strcpy(c.cmd, "#quit");
+
+                                    eliminaCliente(s[i].jogador.pid_cliente, &s[i]);
+
+                                    //printf("NOME DO PIPE: %s\n", fifo_name);
+
+                                    r = write(fd_cli, &c, sizeof(Cliente));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                printf("ESTRUTURA RECEBIDA COM TAMANHO DIFERENTE!\n");
+            }
+        }
+
+    } while (1);
+    close(fd_cli);
+    close(fd_ser);
+    pthread_exit(NULL);
 }
 int main(int argc, char *argv[])
 {
     //s.nClientesAtivos = 0;
-    int duracao, tempo_espera, i = 0, res, r, fds_anon, canal[2], res_canal, n, estado;
+    int i = 0, res, r, n, estado;
     char *ptr, *ptr1, *ptr2, fifo_name[20], cmd[90];
-
-    nthread = 1;
     char str[40];
     int z, *resultado;
-    TCAMPEONATO jogador[nthread];
-    pthread_t tarefa[nthread];
-    //pthread_mutex_t trinco;
-
-    fd_set fds;
     struct timeval tempo;
-
     struct sigaction act;
     act.sa_handler = comecarCamp;
     act.sa_flags = 0;
@@ -280,7 +364,7 @@ int main(int argc, char *argv[])
     }
 
     //ABRIR FIFO DO SERVIDOR
-    fd_ser = open(FIFO_SERV, O_RDWR );
+    fd_ser = open(FIFO_SERV, O_RDWR);
     //VERIFICAR ARGUMENTOS PASSADOS PELA LINHA DE COMANDOS
     if (argc != 3)
     {
@@ -297,24 +381,30 @@ int main(int argc, char *argv[])
     //IMPRIME CONFIGURAÇÕES E COMANDOS
     settings(duracao, tempo_espera);
     comandosMenu();
-    //findJogos();
-    //randomJogo();
 
     // -- Cria thread para a comunicação entre servidor e cliente  --
     pthread_t ligaCliServ;
-
     pthread_create(&ligaCliServ, NULL, ClienteServidor, (void *)&s);
 
     do
     {
-
-        printf("\nINTRODUZA UM COMANDO: ");
-        fgets(cmd, sizeof(cmd), stdin);
-        strtok(cmd, "\n");
+        printf("\nINTRODUZ COMANDO: ");
+        scanf("%s", cmd);
+        //fflush(stdout);
 
         if (strcmp(cmd, "players") == 0)
         {
-            players(s);
+            if (nClientesAtivos <= 0)
+                printf("\nNAO HA JOGADORES LIGADOS!\n");
+            else
+            {
+                printf("\n==== JOGADORES NO CAMPEONATO ====\n");
+                for (int i = 0; i < nClientesAtivos; i++)
+                {
+
+                    printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
+                }
+            }
         }
         else if (strcmp(cmd, "games") == 0)
         {
@@ -326,56 +416,44 @@ int main(int argc, char *argv[])
         }
         else if (cmd[0] == 'k')
         {
-            char *token;
-            token = strtok(cmd, "k");
+            char *nome;
+            nome = strtok(cmd, "k");
 
             for (int i = 0; i < nClientesAtivos; i++)
             {
-                if (strcmp(s[i].jogador.nome, token) == 0)
+                if (strcmp(s[i].jogador.nome, nome) == 0)
+                {
                     kill(s[i].jogador.pid_cliente, SIGINT);
+                    printf("ADEUS %s ....\n", s[i].jogador.nome);
+                    s[i] = s[nClientesAtivos - 1];
+                    nClientesAtivos--;
+                    printf("\nNR DE CLIENTES AINDA ATIVOS: %d\n", nClientesAtivos);
+                }
             }
         }
         else if (cmd[0] == 's')
         {
-            printf("\nStop Player\n");
+            printf("\n PAUSAR CLIENTE\n");
         }
         else if (cmd[0] == 'r')
         {
-            printf("\nResume Player\n");
+            printf("\nVOLTAR A JOGAR\n");
         }
         else if (strcmp(cmd, "end") == 0)
         {
-            printf("\nEND\n");
+            printf("\n TERMINAR\n");
+            for (int i = 0; i < nClientesAtivos; i++)
+            {
+
+                strcpy(s[i].jogador.cmd, "end");
+            }
         }
         else
         {
-            printf("\nComando nao detetado!\n");
+            printf("\nCOMANDO IMPOSSIVEL!\n");
         }
+
     } while (FLAG_SHUTDOWN != 1);
 
-    /* r = read(fd_ser, &c, sizeof(Cliente)); //abre o que o fd_ser enviou
-            printf("\nRECEBI DO FIFO %d ///%s %s %d \n", c.pid_cliente, c.nome, c.cmd, c.contador);
-
-               
-                adicionaCLiente(c, &s);
-                fprintf(stderr, "\n%s INICIOU SESSAO\n", c.nome);
-
-                // strcpy(c.jogoAtribuido, s.num_jogadores[i].jogoAtribuido);
-                //printf("\n%s", c.jogoAtribuido);
-
-                sprintf(fifo_name, "CLI%d", c.pid_cliente);
-                //printf("NOME DO PIPE: %s\n", fifo_name);
-                fd_cli = open(fifo_name, O_WRONLY);
-                r = write(fd_cli, &c, sizeof(Cliente));
-
-                close(fd_cli);
-                //printf("ENVIEI ISTO %s", c.jogoAtribuido); */
-
-    printf("A TERMINAR O SERVIDOR....ADEUS...\n");
-    sleep(1);
-
-    remove(FIFO_SERV);
-    close(fd_ser);
-    unlink(FIFO_SERV);
-    return EXIT_SUCCESS;
+    end();
 }
