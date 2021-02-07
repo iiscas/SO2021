@@ -160,51 +160,56 @@ void *Jogo(void *dados)
 {
     Servidor *s;
     s = (Servidor *)dados;
-
+    int p[2], r[2];
     char j[50], str[2048], fifo_name[50];
-    int resposta, jogo[2], pid_filho;
+    int resposta, pid_filho;
 
-    pipe(jogo);
+    pipe(p);
+    pipe(r);
+
     pid_filho = fork();
     if (pid_filho == 0)
     {
         printf("JOGO PARA CLIENTE %s COMECOU! \n", s->jogador.nome);
         //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
 
-        close(1);       // fecha o stdout do jogo
-        close(jogo[0]); // fecha o stdin do pipe
-        dup(jogo[1]);   // coloca o stdout do pipe no stdout do jogo
-        close(jogo[1]); // fecha o stdout do pipe (o que já não precisamos de usar)
+        close(1);    // fecha o stdout do jogo
+        close(r[0]); // fecha o stdin do pipe
+        dup(r[1]);   // coloca o stdout do pipe no stdout do jogo
+        close(r[1]); // fecha o stdout do pipe (o que já não precisamos de usar)
+
+        close(0);
+        close(p[1]);
+        dup(p[0]);
+        close(p[0]);
         execl("./jogos/g_2", "g_2", NULL);
     }
     else
     {
-        close(jogo[1]);
-        while (resposta = read(jogo[0], str, sizeof(str)) > 0)
-        {
-            str[resposta] = '\0';
-            strcpy(c.cmd, str);
-
-            sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
-
-            if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
-            {
-                printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
-            }
-            else
-            {
-                res = write(fd_cli, &c, sizeof(Cliente));
-            }
-        }
-        close(jogo[0]);
+        close(p[0]);
+        close(r[1]);
     }
-    if (strcmp(s->jogador.cmd, "end") == 0)
+
+    while (resposta = read(r[0], str, sizeof(str)) > 0)
     {
-        kill(pid_filho, SIGUSR1);
-        printf("e para terminar. Vou aguardar que o filho/jogo termine\n");
-        fflush(stdout);
+        str[resposta] = '\0';
+        strcpy(c.cmd, str);
+
+        sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
+
+        if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
+        {
+            printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+        }
+        else
+        {
+            res = write(fd_cli, &c, sizeof(Cliente));
+        }
     }
+    close(r[0]);
+    close(p[1]);
 }
+
 void *Campeonato(void *dados)
 {
     Servidor *s;
@@ -270,7 +275,7 @@ void *ClienteServidor(void *dados)
                             printf("NOME DO PIPE: %s\n", fifo_name);
                             r = write(fd_cli, &c, sizeof(Cliente));
 
-                            if (nClientesAtivos >1 && temporizador == 0)
+                            if (nClientesAtivos > 1 && temporizador == 0)
                             {
                                 temporizador = 1;
                                 pthread_create(&campeonatoT, NULL, Campeonato, (void *)s);

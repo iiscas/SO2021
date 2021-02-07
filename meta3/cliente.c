@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 {
     int res, i = 0;
     char cmd[60];
-    //fd_set fds;
+    fd_set fds;
     Cliente c, cr;
     struct timeval tempo;
 
@@ -89,57 +89,76 @@ int main(int argc, char *argv[])
 
     //A este ponto o cliente pode escrever no fifo do servidor, que este vai poder ler
     //E pode ler o fifo do cliente, no qual o servidor vai estar a escrever
+    fd_cli = open(fifo_name, O_RDWR);
+    //fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
 
-    printf("Nome de utilizador: ");
+    printf("\nINTRODUZA O SEU NOME: ");
     scanf("%s", c.nome);
-    //fflush(stdout);
+    fflush(stdout);
     c.acesso = 0;
-    write(fd_ser, &c, sizeof(Cliente)); //escreve o nome no fifo do servidor
+    //ABRE O FIFO DO SERV PARA ENVIO DO NOME
+    fd_ser = open(FIFO_SERV, O_WRONLY);
+    // printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
+
+    res = write(fd_ser, &c, sizeof(Cliente));
+    //printf("\nENVIEI %s ", c.nome);
+    //close(fd_ser);
 
     res = read(fd_cli, &c, sizeof(Cliente));
-     //le a mensagem do server no pipe do cliente
-        if (res == sizeof(Cliente))
-        {
-            fprintf(stderr, "\nO cliente recebeu mensagem do servidor.\n");
-            fprintf(stderr, c.cmd);
-        }
-        else
-        {
-            fprintf(stderr, "\nO servidor não conseguiu entregar a mensagem ao cliente.\n");
-        }
-    
-    //sleep(10);
-    while (1)
+    if (res == sizeof(Cliente))
     {
-        fprintf(stderr, "\nINTRODUZA UM COMANDO: ");
-        scanf("%s", c.cmd);
-        //input do user
-        c.acesso = 1; // A partir daqui todas as mensagens são comandos.
-        if (strcmp(c.cmd, "fim") == 0)
-        {
-            break; //se fim vai fechar pipes e sair
-        }
-        write(fd_ser, &c, sizeof(Cliente)); //escreve no fifo do servidor para ele ler usando a mensagem para servidor
+        fprintf(stderr, "\nO cliente recebeu mensagem do servidor.\n");
+        fprintf(stderr, c.cmd);
+    }
+    else
+    {
+        fprintf(stderr, "\nO servidor não conseguiu entregar a mensagem ao cliente.\n");
+    }
+    do
+    {
+        printf("\n%s, INTRODUZA UM COMANDO: ", c.nome);
 
-        while ((res = read(fd_cli, &c, sizeof(Cliente))) > 0)
-        { //le a mensagem do server no pipe do cliente
-            if (res == sizeof(Cliente))
+        fflush(stdout);
+        FD_ZERO(&fds);
+        FD_SET(0, &fds);
+        FD_SET(fd_cli, &fds);
+
+        tempo.tv_sec = 20; //vai buscar valor pela linha de comandos
+        tempo.tv_usec = 0;
+
+        res = select(fd_cli + 1, &fds, NULL, NULL, &tempo);
+
+        if (res > 0 && FD_ISSET(0, &fds))
+        {
+
+            scanf("%s", c.cmd);
+            //printf("TESTE SCANF %s\n", c.cmd);
+
+            //ABRE O FIFO DO SERV PARA ENVIO DO NOME
+            fd_ser = open(FIFO_SERV, O_WRONLY);
+            //printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
+
+            res = write(fd_ser, &c, sizeof(Cliente));
+            //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);
+            close(fd_ser);
+        }
+
+        else if (res > 0 && FD_ISSET(fd_cli, &fds))
+        {
+            //RECEBE RESPOSTA DO SERVIDOR
+            res = read(fd_cli, &cr, sizeof(Cliente));
+
+            if (strcmp(cr.cmd, "#quit") == 0)
             {
-                if (strcmp(c.cmd, "#quit") == 0)
-                    sair();
-                if (strcmp(c.cmd, "#mygame") == 0)
-                {
-                    //fprintf(stderr, "\n---O cliente recebeu mensagem do servidor.\n");
-                    fprintf(stderr, "\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", c.nome, c.jogo);
-                }
+                sair();
             }
             else
             {
-                
-                printf("%s",c.cmd);
+                printf("\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", cr.nome, cr.jogo);
             }
         }
-    }
+
+    } while (FLAG_SHUTDOWN != 1);
     close(fd_cli);
     close(fd_ser);
     unlink(fifo_name);
