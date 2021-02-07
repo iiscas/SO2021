@@ -166,7 +166,7 @@ void *Jogo(void *dados)
 
     pipe(p);
     pipe(r);
-
+     sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
     pid_filho = fork();
     if (pid_filho == 0)
     {
@@ -189,13 +189,14 @@ void *Jogo(void *dados)
         close(p[0]);
         close(r[1]);
     }
-
-    while (resposta = read(r[0], str, sizeof(str)) > 0)
+    int z=1;
+    while (z!=0)
     {
+        resposta = read(r[0], str, sizeof(str));
         str[resposta] = '\0';
         strcpy(c.cmd, str);
-
-        sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
+        
+       
 
         if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
         {

@@ -39,7 +39,7 @@ void trataSig(int i)
 
 int main(int argc, char *argv[])
 {
-    int res, i = 0;
+    int res, i = 0, r;
     char cmd[60];
     fd_set fds;
     Cliente c, cr;
@@ -87,8 +87,6 @@ int main(int argc, char *argv[])
     }
     fprintf(stderr, "\n FIFO do Cliente aberto para leitura.\n");
 
-    //A este ponto o cliente pode escrever no fifo do servidor, que este vai poder ler
-    //E pode ler o fifo do cliente, no qual o servidor vai estar a escrever
     fd_cli = open(fifo_name, O_RDWR);
     //fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
 
@@ -99,9 +97,8 @@ int main(int argc, char *argv[])
     //ABRE O FIFO DO SERV PARA ENVIO DO NOME
     fd_ser = open(FIFO_SERV, O_WRONLY);
     // printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
-
-    res = write(fd_ser, &c, sizeof(Cliente));
-    //printf("\nENVIEI %s ", c.nome);
+    write(fd_ser, &c, sizeof(Cliente));
+    printf("\nENVIEI %s ", c.nome);
     //close(fd_ser);
 
     res = read(fd_cli, &c, sizeof(Cliente));
@@ -126,21 +123,21 @@ int main(int argc, char *argv[])
         tempo.tv_sec = 20; //vai buscar valor pela linha de comandos
         tempo.tv_usec = 0;
 
-        res = select(fd_cli + 1, &fds, NULL, NULL, &tempo);
+        r = select(fd_cli + 1, &fds, NULL, NULL, &tempo);
 
-        if (res > 0 && FD_ISSET(0, &fds))
+        if (r > 0 && FD_ISSET(0, &fds))
         {
-
+            //stdin
             scanf("%s", c.cmd);
-            //printf("TESTE SCANF %s\n", c.cmd);
-
-            //ABRE O FIFO DO SERV PARA ENVIO DO NOME
-            fd_ser = open(FIFO_SERV, O_WRONLY);
-            //printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
+            printf("TESTE SCANF %s\n", c.cmd);
+            c.acesso = 1;
+            if (strcmp(c.cmd, "fim") == 0)
+            {
+                break;
+            }
 
             res = write(fd_ser, &c, sizeof(Cliente));
             //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);
-            close(fd_ser);
         }
 
         else if (res > 0 && FD_ISSET(fd_cli, &fds))
@@ -152,9 +149,13 @@ int main(int argc, char *argv[])
             {
                 sair();
             }
-            else
+            else if (strcmp(cr.cmd, "#mygame") == 0)
             {
                 printf("\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", cr.nome, cr.jogo);
+            }
+            else
+            {
+                fprintf(stderr, cr.cmd);
             }
         }
 
