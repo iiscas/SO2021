@@ -137,15 +137,15 @@ void eliminaCliente(int pid, Servidor s[])
         }
     }
 }
-int existeCliente(char nome[], Servidor *s)
+struct Servidor* existeCliente(char nome[], Servidor* s)
 {
     int i;
     for (i = 0; i < nClientesAtivos; i++)
     {
         if (strcmp(s[i].jogador.nome, nome) == 0)
-            return 1;
+            return &s[i];
     }
-    return 0;
+    return NULL;
 }
 int end()
 {
@@ -166,7 +166,7 @@ void *Jogo(void *dados)
 
     pipe(p);
     pipe(r);
-     sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
+    sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
     pid_filho = fork();
     if (pid_filho == 0)
     {
@@ -189,26 +189,26 @@ void *Jogo(void *dados)
         close(p[0]);
         close(r[1]);
     }
-    int z=1;
-    while (z!=0)
+    int z = 1;
+    while (z != 0)
     {
-        resposta = read(r[0], str, sizeof(str));
-        str[resposta] = '\0';
-        strcpy(c.cmd, str);
-        
-       
+        while ((resposta = read(r[0], str, sizeof(str))) > 0)
+        {
+            str[resposta] = '\0';
+            strcpy(c.cmd, str);
 
-        if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
-        {
-            printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+            if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
+            {
+                printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+            }
+            else
+            {
+                res = write(fd_cli, &c, sizeof(Cliente));
+            }
         }
-        else
-        {
-            res = write(fd_cli, &c, sizeof(Cliente));
-        }
+        close(r[0]);
+        close(p[1]);
     }
-    close(r[0]);
-    close(p[1]);
 }
 
 void *Campeonato(void *dados)
@@ -232,6 +232,7 @@ void *ClienteServidor(void *dados)
 {
     //fprintf(stderr, "\n Cliente com o PID %d esta a tentar conectar.\n", s.num_jogadores[s.nClientesAtivos].pid_cliente);
     Servidor *s;
+    Servidor* currentUser;
     s = (Servidor *)dados;
     //msgForservidor=s
     char fifo_name[50];
@@ -264,7 +265,7 @@ void *ClienteServidor(void *dados)
                 {
                     if (c.acesso == 0)
                     {
-                        if (existeCliente(c.nome, &s[nClientesAtivos]) == 0)
+                        if (existeCliente(c.nome, s) == NULL)
                         {
                             strcpy(s[nClientesAtivos].jogador.nome, c.nome);
                             s[nClientesAtivos].jogador.pid_cliente = c.pid_cliente;
@@ -324,6 +325,22 @@ void *ClienteServidor(void *dados)
                                     //printf("NOME DO PIPE: %s\n", fifo_name);
 
                                     r = write(fd_cli, &c, sizeof(Cliente));
+                                }
+                            }
+                        }
+                        else if (c.cmd[0] != '#')
+                        {
+                            printf("AQUI!!!!!!\n");
+                            for (int i = 0; i < nClientesAtivos; i++)
+                            {
+                                if (c.pid_cliente == s[i].jogador.pid_cliente)
+                                {
+                                    //currentUser=existeCliente(c.nome, s);
+                                    /* c.cmd[strlen(c.cmd) + 1] = '\n';*/
+                                    printf("vou mandar isto '%s'\n", c.cmd);
+
+                                    r = write(s[i].p[1], &c.cmd, strlen(c.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
+                                  
                                 }
                             }
                         }

@@ -43,9 +43,9 @@ int main()
 		printf("\nDIGITE UM NUMERO ENTRE 0 E 2: ");
 		fflush(stdout);
 		scanf("%s",escolha);
-
+		fflush(stdout);
 		//x=atoi(escolha);
-		if ((strcmp(escolha,"0")==0) || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0))
+		if ((strcmp(escolha,"0")==0) /* || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0) */)
 		{
 
 			srand((unsigned)time(NULL));
@@ -67,6 +67,9 @@ int main()
 			printf("\n");
 			sleep(1);
 		}
+		else{
+			printf("RECEBEU ISTO %s",escolha);
+		}
 
-	} while (FLAG_TERMINA != 1);
+	} while (1);
 }

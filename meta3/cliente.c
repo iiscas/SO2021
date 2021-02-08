@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
             }
 
             res = write(fd_ser, &c, sizeof(Cliente));
-            //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);
+            printf("\nENVIEI %s %s  %d\n", c.nome, c.cmd ,c.pid_cliente);
         }
 
         else if (res > 0 && FD_ISSET(fd_cli, &fds))
