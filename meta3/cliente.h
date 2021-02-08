@@ -30,7 +30,7 @@ typedef struct
     char jogo[MAX];
 } Cliente;
 
-//RESPOSTA SERVIDOR -> CLIENTE
+/* //RESPOSTA SERVIDOR -> CLIENTE
 typedef struct
 {
     int nJogos;
@@ -39,3 +39,4 @@ typedef struct
     int nClientesAtivos;
     Cliente num_jogadores[30];
 } Servidor;
+ */

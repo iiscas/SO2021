@@ -45,6 +45,7 @@ typedef struct
     int nJogos;
     char cmd[80];
     char jogos[2];
-    // int nClientesAtivos;
+    int p[2],r[2];
+    int pid_jogo;
     Cliente jogador;
 } Servidor;

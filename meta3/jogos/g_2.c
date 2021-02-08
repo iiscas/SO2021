@@ -39,7 +39,7 @@ int main()
 	fflush(stdout);
 	do
 	{
-		printf("\nDigite um numero entre 0 e 2\n");
+		printf("\nDigite um numero entre 0 e 2: ");
 		fflush(stdout);
 		scanf("%d", &escolha);
 

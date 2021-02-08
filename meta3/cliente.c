@@ -129,18 +129,18 @@ int main(int argc, char *argv[])
         {
             //stdin
             scanf("%s", c.cmd);
-            printf("TESTE SCANF %s\n", c.cmd);
+            //printf("TESTE SCANF %s\n", c.cmd);
             c.acesso = 1;
             if (strcmp(c.cmd, "fim") == 0)
             {
                 break;
             }
 
-            res = write(fd_ser, &c, sizeof(Cliente));
-            //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);
+            write(fd_ser, &c, sizeof(Cliente));
+            printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd, c.pid_cliente);
         }
 
-        else if (res > 0 && FD_ISSET(fd_cli, &fds))
+        else if (r > 0 && FD_ISSET(fd_cli, &fds))
         {
             //RECEBE RESPOSTA DO SERVIDOR
             res = read(fd_cli, &cr, sizeof(Cliente));
@@ -155,10 +155,10 @@ int main(int argc, char *argv[])
             }
             else
             {
-                fprintf(stderr, cr.cmd);
+                //para imprimir o jogo!
+                printf("\n%s\n", cr.cmd);
             }
         }
-
     } while (FLAG_SHUTDOWN != 1);
     close(fd_cli);
     close(fd_ser);
