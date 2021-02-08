@@ -160,68 +160,55 @@ void *Jogo(void *dados)
 {
     Servidor *s;
     s = (Servidor *)dados;
-    //int p[2], r[2];
+    int p[2], r[2];
     char j[50], str[2048], fifo_name[50];
     int resposta, pid_filho;
 
-    pipe(s->p);
-    pipe(s->r);
-    sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
+    pipe(p);
+    pipe(r);
+     sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
     pid_filho = fork();
     if (pid_filho == 0)
     {
-        s->pid_jogo = getpid();
         printf("JOGO PARA CLIENTE %s COMECOU! \n", s->jogador.nome);
         //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
 
-        close(1);       // fecha o stdout do jogo
-        close(s->r[0]); // fecha o stdin do pipe
-        dup(s->r[1]);   // coloca o stdout do pipe no stdout do jogo
-        close(s->r[1]); // fecha o stdout do pipe (o que já não precisamos de usar)
+        close(1);    // fecha o stdout do jogo
+        close(r[0]); // fecha o stdin do pipe
+        dup(r[1]);   // coloca o stdout do pipe no stdout do jogo
+        close(r[1]); // fecha o stdout do pipe (o que já não precisamos de usar)
 
         close(0);
-        close(s->p[1]);
-        dup(s->p[0]);
-        close(s->p[0]);
+        close(p[1]);
+        dup(p[0]);
+        close(p[0]);
         execl("./jogos/g_2", "g_2", NULL);
     }
     else
     {
-        close(s->p[0]);
-        close(s->r[1]);
-
-        int r;
-        while (1)
-        {
-            //escreve para o jogador
-            while ((resposta = read(s->r[0], str, sizeof(str) - sizeof(char))) > 0)
-            {
-
-                str[resposta] = '\0';
-                strcpy(c.cmd, str);
-
-                //reabrir o fifo do filho respetivo
-                sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
-                printf("Fifo name %s\n", fifo_name);
-
-                if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
-                {
-                    printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
-                }
-                else
-                {
-                    res = write(fd_cli, &c, sizeof(Cliente));
-                }
-                if ((r = read(s->p[1], str, sizeof(str))) > 0)
-                {
-                    write(s->r[0], str, sizeof(str));
-                }
-            }
-        }
-
-        close(s->r[0]);
-        close(s->p[1]);
+        close(p[0]);
+        close(r[1]);
     }
+    int z=1;
+    while (z!=0)
+    {
+        resposta = read(r[0], str, sizeof(str));
+        str[resposta] = '\0';
+        strcpy(c.cmd, str);
+        
+       
+
+        if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
+        {
+            printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+        }
+        else
+        {
+            res = write(fd_cli, &c, sizeof(Cliente));
+        }
+    }
+    close(r[0]);
+    close(p[1]);
 }
 
 void *Campeonato(void *dados)
@@ -264,17 +251,15 @@ void *ClienteServidor(void *dados)
             fprintf(stderr, "\n COMANDO RECEBIDO DO CLIENTE COM O PID %d: [%s]\n", c.pid_cliente, c.cmd);
 
         sprintf(fifo_name, "CLI%d", c.pid_cliente);
-        printf("FIFO NAME: %s\n", fifo_name);
+        //printf("FIFO NAME: %s\n", fifo_name);
 
         if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
             perror("\n ERRO AO ABRIR FIFO CLI");
 
         else
         {
-            printf("FIFO NAME: %s\n", fifo_name);
             if (r == sizeof(Cliente))
             {
-                printf("FIFO NAME: %s\n", fifo_name);
                 if (nClientesAtivos < 30)
                 {
                     if (c.acesso == 0)
@@ -304,9 +289,9 @@ void *ClienteServidor(void *dados)
                         }
                     }
 
-                    else if (c.acesso != 0)
+                    if (c.acesso != 0)
                     {
-                        fprintf(stderr, "\nFIFO do cliente %s aberto para escrita.\n", fifo_name);
+                        //fprintf(stderr, "\nFIFO do cliente %s aberto para escrita.\n", fifo_name);
 
                         if (strcmp(c.cmd, "#mygame") == 0)
                         {

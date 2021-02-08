@@ -21,7 +21,8 @@ void atendeSinal(int signal)
 
 int main()
 {
-	int prog, escolha, i;
+	int prog,i,x;
+	char escolha[4];
 
 	//printf("PID: %d\n", getpid());
 	
@@ -33,23 +34,24 @@ int main()
 	}
 	//fprintf(stderr, "\nSINAL CONFIGURADO\n");
 	//fflush(stdout);
-	printf("-----BEM VINDO------\n");
-	printf("---Jogo Adivinha o Numero---\n");
-	printf("\nO jogador ganha caso acerte\nno numero que o computador 'pensou'!\n");
+	printf("\n-----BEM VINDO------\n");
+	printf("---JOGO ADIVINHA O NUMERO---\n");
+	printf("\nO JOGADOR GANHA CASO ACERTE\nNO NUMERO QUE O COMPUTADOR PENSOU!\n");
 	fflush(stdout);
 	do
 	{
-		printf("\nDigite um numero entre 0 e 2: ");
+		printf("\nDIGITE UM NUMERO ENTRE 0 E 2: ");
 		fflush(stdout);
-		scanf("%d", &escolha);
+		scanf("%s",escolha);
 
-		if (escolha > 0 && escolha <= 2)
+		//x=atoi(escolha);
+		if ((strcmp(escolha,"0")==0) || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0))
 		{
 
 			srand((unsigned)time(NULL));
 			prog = rand() % 2;
 
-			if (escolha == prog)
+			if (x == prog)
 			{
 				printf("Jogador ganhou!!! \n");
 				pontos++;
