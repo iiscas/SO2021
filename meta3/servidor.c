@@ -157,6 +157,16 @@ void *Jogo(void *dados)
     int p[2], r[2], z = 1;
     char j[50], str[2048], fifo_name[50];
     int resposta, pid_filho;
+    char *jogo=s->jogador.jogo;
+    char *dir=gamedir;
+    char *tmp=strdup(dir);
+    strcat(tmp,jogo);
+    //printf("DIR -->%s\n",dir);
+    printf("TEMP -->%s\n",tmp);
+    strcpy(s->jogador.jogo,tmp);
+     printf("JOGO -->%s\n",jogo);
+     free(tmp);
+
 
     pipe(p);
     pipe(r);
@@ -164,7 +174,7 @@ void *Jogo(void *dados)
     pid_filho = fork();
     if (pid_filho == 0)
     {
-        printf("JOGO PARA CLIENTE %s COMECOU! \n", s->jogador.nome);
+        printf("JOGO %s PARA CLIENTE %s COMECOU! \n",s->jogador.jogo, s->jogador.nome);
         //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
 
         close(1);    // fecha o stdout do jogo
@@ -176,7 +186,7 @@ void *Jogo(void *dados)
         close(p[1]);
         dup(p[0]);
         close(p[0]);
-        execl("./jogos/g_2", "g_2", NULL);
+        execl(s->jogador.jogo,s->jogador.jogo, NULL);
     }
     else
     {
