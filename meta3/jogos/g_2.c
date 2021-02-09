@@ -34,35 +34,35 @@ int main()
 	}
 	//fprintf(stderr, "\nSINAL CONFIGURADO\n");
 	//fflush(stdout);
-	printf("\n-----BEM VINDO------\n---JOGO ADIVINHA O NUMERO---\nO JOGADOR GANHA CASO ACERTE\nNO NUMERO QUE O COMPUTADOR PENSOU!\n");
+	printf("\n----- BEM VINDO ------\n--- JOGO ADIVINHA O NUMERO ---\n O JOGADOR GANHA CASO ACERTE\n NO NUMERO QUE O COMPUTADOR PENSOU!\n----------------------------------\n");
 	//fflush(stdout);
 	do
 	{
 		printf("\nDIGITE UM NUMERO ENTRE 0 E 2: ");
 		fflush(stdout);
 		scanf("%s",escolha);
-		printf("\nRECEBEU ISTO %s\n",escolha);
+		//printf("\nRECEBEU ISTO %s\n",escolha);
 		//fflush(stdout);
 		//x=atoi(escolha);
 		if ((strcmp(escolha,"0")==0)  || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0) )
 		{
-
+			x=atoi(escolha);
 			srand((unsigned)time(NULL));
 			prog = rand() % 2;
 
 			if (x == prog)
 			{
-				printf("Jogador ganhou!!! \n");
+				printf("JOGADOR GANHOU!!!\n");
 				pontos++;
 			}
 
 			else
 			{
-				printf("Jogador perdeu!!! \n");
+				printf("JOGADOR PERDEU!!! \n");
 			}
 
-			printf("O num do computador escolhido foi:  %d \n", prog);
-			printf("\nO num de pontos e: %d", pontos);
+			printf("O NUMERO ALEATORIO FOI:  %d \n", prog);
+			printf("PONTUACAO:%d", pontos);
 			printf("\n");
 			sleep(1);
 		}
