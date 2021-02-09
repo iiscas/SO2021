@@ -44,7 +44,7 @@ typedef struct
 {
     int nJogos;
     char cmd[MAX];
-    char jogos[2];
+    char jogoAtribuido[MAX];
     int p[2],r[2];
     int pid_jogo;
     int avanca;

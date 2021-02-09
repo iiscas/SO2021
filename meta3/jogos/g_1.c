@@ -1,52 +1,49 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<unistd.h>
-#include<string.h>
-#include<sys/wait.h>
-#include<sys/stat.h>
-#include<signal.h>
-#include<time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <signal.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
-int pontos=0;
-int FLAG_TERMINA=0;
+int pontos = 0;
+int FLAG_TERMINA = 0;
 
-
-void atendeSinal(int signal){
-	printf("\nSINAL %d RECEBIDO... VAI TERMINAR...",signal);
-	FLAG_TERMINA=1;
+void handlerSIG(int sig)
+{
+	printf("\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
+	FLAG_TERMINA = 1;
 	exit(pontos);
-	}
+}
 
 int main()
 {
-	int prog, jogador, escolha, resultado,i;
-	//printf("PID: %d\n",getpid());
-	//(SIGUSR1,atendeSinal);
-	if (signal(SIGUSR1,atendeSinal) == SIG_ERR) {
+	int prog, jogador, escolha, resultado, i;
+	if (signal(SIGUSR1, handlerSIG) == SIG_ERR)
+	{
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");
 		exit(EXIT_FAILURE);
 	}
 	//fprintf(stderr,"\nSINAL CONFIGURADO\n");
 
-	printf("-----BEM VINDO------\n");
-	printf("---Jogo ADIVINHA O NUMERO---\n");
-	printf("\nO jogador ganha caso a soma dos numeros\nseja par/impar consoante o que escolheu!\n");
-	fflush(stdout);
-	
+	printf("----- BEM VINDO ------\n--- JOGO ADIVINHA O NUMERO ---\n O JOGADOR GANHA CASO A SOMA DOS NUMEROS\n SEJA PAR/IMPAR CONSOANTE O QUE ESCOLHEU!\n----------------------------------\n");
+
 	do
 	{
-		printf("\nEscolha par(0) ou ímpar(1): ");
+		printf("\nESCOLHA PAR(0) OU ÍMPAR(1): ");
 		fflush(stdout);
 		scanf("%d", &escolha);
 
 		if (escolha == 0 || escolha == 1)
 		{
-			printf("\nEscolha a sua jogada: ");
+			printf("\nESCOLHA A SUA JOGADA: ");
+			fflush(stdout);
 			scanf("%d", &jogador);
 
 			srand((unsigned)time(NULL));
@@ -63,21 +60,23 @@ int main()
 
 			if (escolha == resultado)
 			{
-				printf("Jogador ganhou!!! \n");
+				printf("JOGADOR GANHOU!!! \n");
 				pontos++;
 			}
 
 			else
 			{
-				printf("Jogador perdeu!!! \n");
+				printf("JOGADOR PERDEU!!! \n");
 			}
-
-			printf("O num do computador escolhido foi:  %d \n", prog);
-			printf("\nO num de pontos e: %d", pontos);
+			printf("O NUMERO ALEATORIO FOI:  %d \n", prog);
+			printf("PONTUACAO:%d", pontos);
 			printf("\n");
 			sleep(1);
 		}
+		else
+		{
+			printf(" -- NUMERO SO PODE SER O OU 1 !\n");
+		}
 
-	}while(FLAG_TERMINA!=1);
-
+	} while (FLAG_TERMINA != 1);
 }

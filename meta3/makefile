@@ -1,4 +1,4 @@
-all: cliente servidor jogo
+all: cliente servidor jogo 
 
 cliente:
 	gcc -c cliente.c
@@ -13,6 +13,10 @@ jogo:
 	gcc jogos/g_1.c -o  jogos/g_1
 	gcc -c jogos/g_2.c
 	gcc jogos/g_2.c -o  jogos/g_2
+
+
+
+
 
 clean: cleanc cleans cleanj1 cleanj2
 

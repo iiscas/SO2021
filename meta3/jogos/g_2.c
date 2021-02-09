@@ -13,7 +13,7 @@ int FLAG_TERMINA = 0;
 
 void atendeSinal(int signal)
 {
-	fprintf(stderr,"\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
+	fprintf(stderr, "\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
 	fflush(stderr);
 	FLAG_TERMINA = 1;
 	exit(pontos);
@@ -21,11 +21,11 @@ void atendeSinal(int signal)
 
 int main()
 {
-	int prog,i,x;
+	int prog, i, x;
 	char escolha[2048];
 
 	//printf("PID: %d\n", getpid());
-	
+
 	//signal(SIGUSR1, atendeSinal);
 	if (signal(SIGUSR1, atendeSinal) == SIG_ERR)
 	{
@@ -40,13 +40,13 @@ int main()
 	{
 		printf("\nDIGITE UM NUMERO ENTRE 0 E 2: ");
 		fflush(stdout);
-		scanf("%s",escolha);
+		scanf("%s", escolha);
 		//printf("\nRECEBEU ISTO %s\n",escolha);
 		//fflush(stdout);
 		//x=atoi(escolha);
-		if ((strcmp(escolha,"0")==0)  || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0) )
+		if ((strcmp(escolha, "0") == 0) || (strcmp(escolha, "1") == 0) || (strcmp(escolha, "2") == 0))
 		{
-			x=atoi(escolha);
+			x = atoi(escolha);
 			srand((unsigned)time(NULL));
 			prog = rand() % 2;
 
@@ -67,5 +67,9 @@ int main()
 			sleep(1);
 		}
 
+		else
+		{
+			printf("-- NUMERO SO PODE SER 0, 1 OU 2 !\n");
+		}
 	} while (1);
 }

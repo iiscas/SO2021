@@ -9,6 +9,16 @@ int nClientesAtivos = 0;
 int i = 0;
 int temporizador = 0;
 int tempo_espera, duracao;
+int campStarted = 0;
+int end()
+{
+    printf("A TERMINAR O SERVIDOR....ADEUS...\n");
+    sleep(1);
+    remove(FIFO_SERV);
+    close(fd_ser);
+    unlink(FIFO_SERV);
+    return EXIT_SUCCESS;
+}
 int findJogos(char *gd)
 {
     DIR *folder;
@@ -61,7 +71,7 @@ void randomJogo(Servidor *s)
                 if (jogoRandom == jogoAtual)
                 {
 
-                    //printf("Nome do jogo a devolver: %s\n", dirJogos->d_name);
+                    printf("Nome do jogo a devolver: %s\n", dirJogos->d_name);
                     dirJogos->d_name[strlen(dirJogos->d_name) - 2] = '\0';
                     strcpy(s[nClientesAtivos].jogador.jogo, dirJogos->d_name);
                     //return (dirJogos->d_name);
@@ -108,13 +118,25 @@ void comandosMenu()
     printf("o Sair encerrando o arbitro <exit>\n");
     printf("\n---------------------------------------\n");
 }
-void trataSig(int i)
+void sigHandler(int i)
 {
-    fprintf(stderr, "\nSERVIDOR A TERMINAR VIA TECLADO.....\n");
-    remove(FIFO_SERV);
-    close(fd_ser);
-    unlink(FIFO_SERV);
-    exit(EXIT_SUCCESS);
+    char pid[200];
+    if (i == SIGINT)
+    {
+        fprintf(stderr, "\nSERVIDOR A DESLIGAR.....\n");
+        for (int i = 0; i <= nClientesAtivos; i++)
+        {
+
+            kill(s[i].jogador.pid_cliente, SIGINT);
+            s[i] = s[nClientesAtivos - 1];
+            nClientesAtivos--;
+        }
+        sleep(1);
+        remove(FIFO_SERV);
+        close(fd_ser);
+        unlink(FIFO_SERV);
+        exit(EXIT_SUCCESS);
+    }
 }
 void eliminaCliente(int pid, Servidor s[])
 {
@@ -140,16 +162,15 @@ int existeCliente(char nome[], Servidor *s)
     }
     return 0;
 }
-
-int end()
+void handlerAlarm(int sig)
 {
-    printf("A TERMINAR O SERVIDOR....ADEUS...\n");
-    sleep(1);
-    remove(FIFO_SERV);
-    close(fd_ser);
-    unlink(FIFO_SERV);
-    return EXIT_SUCCESS;
+    if (sig == SIGALRM)
+    {
+        end();
+        exit(0);
+    }
 }
+
 void *Jogo(void *dados)
 {
     Servidor *s;
@@ -157,16 +178,12 @@ void *Jogo(void *dados)
     int p[2], r[2], z = 1;
     char j[50], str[2048], fifo_name[50];
     int resposta, pid_filho;
-    char *jogo=s->jogador.jogo;
-    char *dir=gamedir;
-    char *tmp=strdup(dir);
-    strcat(tmp,jogo);
-    //printf("DIR -->%s\n",dir);
-    printf("TEMP -->%s\n",tmp);
-    strcpy(s->jogador.jogo,tmp);
-     printf("JOGO -->%s\n",jogo);
-     free(tmp);
-
+    char *jogo = s->jogador.jogo;
+    char *dir = gamedir;
+    char *tmp = strdup(dir);
+    strcat(tmp, jogo);
+    strcpy(s->jogoAtribuido, tmp);
+    free(tmp);
 
     pipe(p);
     pipe(r);
@@ -174,7 +191,7 @@ void *Jogo(void *dados)
     pid_filho = fork();
     if (pid_filho == 0)
     {
-        printf("JOGO %s PARA CLIENTE %s COMECOU! \n",s->jogador.jogo, s->jogador.nome);
+        printf("JOGO %s PARA CLIENTE %s COMECOU! \n", s->jogador.jogo, s->jogador.nome);
         //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
 
         close(1);    // fecha o stdout do jogo
@@ -186,7 +203,7 @@ void *Jogo(void *dados)
         close(p[1]);
         dup(p[0]);
         close(p[0]);
-        execl(s->jogador.jogo,s->jogador.jogo, NULL);
+        execl(s->jogoAtribuido, s->jogoAtribuido, NULL);
     }
     else
     {
@@ -225,6 +242,7 @@ void *Jogo(void *dados)
         close(r[0]);
         close(p[1]);
     }
+    kill(pid_filho, SIGTERM);
 }
 
 void *Campeonato(void *dados)
@@ -237,15 +255,23 @@ void *Campeonato(void *dados)
     printf("O CAMPEONATO VAI COMECAR DAQUI A %d SEGUNDOS\n", tempo_espera);
     sleep(tempo_espera);
     comecarCamp();
-
+    alarm(duracao);
+    campStarted = 1;
     //ATRIBUIR JOGO RANDOM PARA CADA JOGADOR
-    for (int i = 0; i < nClientesAtivos; i++)
+    if (campStarted == 1)
     {
-        /* strcpy(g, randomJogo());
+        for (int i = 0; i < nClientesAtivos; i++)
+        {
+            /* strcpy(g, randomJogo());
         strcpy(s[i].jogador.jogo, g);*/
-        //printf("JOGO ATRIBUIDO: %s",findJogos());
-        pthread_create(&jogo, NULL, Jogo, (void *)&s[i]);
-        //printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
+            //printf("JOGO ATRIBUIDO: %s",findJogos());
+            pthread_create(&jogo, NULL, Jogo, (void *)&s[i]);
+            //printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
+        }
+    }
+    else
+    {
+        printf("CAMPEONATO SUSPENSO! \n");
     }
 };
 void *ClienteServidor(void *dados)
@@ -286,8 +312,10 @@ void *ClienteServidor(void *dados)
                 {
                     if (c.acesso == 0)
                     {
+                        fprintf(stderr, "\n CLIENTE %s COM PID %d QUER SE REGISTAR!\n", c.nome, c.pid_cliente);
                         if (existeCliente(c.nome, s) != 1)
                         {
+
                             strcpy(s[nClientesAtivos].jogador.nome, c.nome);
                             s[nClientesAtivos].jogador.pid_cliente = c.pid_cliente;
                             randomJogo(s);
@@ -308,8 +336,10 @@ void *ClienteServidor(void *dados)
                         }
                         else
                         {
+                            strcpy(c.cmd, "NOME OCUPADO! \n");
+                            r = write(fd_cli, &c, sizeof(Cliente));
+                            sleep(1);
                             kill(c.pid_cliente, SIGINT);
-                            nClientesAtivos--;
                         }
                     }
 
@@ -351,7 +381,7 @@ void *ClienteServidor(void *dados)
                                 }
                             }
                         }
-                        else if (c.cmd[0] != '#')
+                        else if (c.cmd[0] != '#' && campStarted == 1)
                         {
                             //printf("AQUI!!!!!!\n");
                             for (int i = 0; i < nClientesAtivos; i++)
@@ -391,19 +421,15 @@ int main(int argc, char *argv[])
     char str[40];
     int z, *resultado;
     struct timeval tempo;
-    struct sigaction act;
-    act.sa_handler = comecarCamp;
-    act.sa_flags = 0;
-    sigaction(SIGALRM, &act, NULL);
+    signal(SIGINT, handlerAlarm);
     srand(time(NULL));
 
     //WARNINGS
-    if (signal(SIGINT, trataSig) == SIG_ERR)
+    if (signal(SIGINT, sigHandler) == SIG_ERR)
     {
         perror("\n NAO FOI POSSIVEL SINAL SIGNINT\n");
         exit(EXIT_FAILURE);
     }
-    fprintf(stderr, "\nSINAL SIGNIT CONFIGURADO\n");
 
     if (access(FIFO_SERV, F_OK) != 0)
     {
@@ -460,10 +486,6 @@ int main(int argc, char *argv[])
             printf("\n---------------------\n");
             findJogos(gamedir);
         }
-        else if (strcmp(cmd, "exit") == 0)
-        {
-            FLAG_SHUTDOWN = 1;
-        }
         else if (cmd[0] == 'k')
         {
             char *nome;
@@ -491,19 +513,28 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(cmd, "end") == 0)
         {
-            printf("\n TERMINAR\n");
+            printf("\n TERMINAR CAMPEONATO.....\n");
             for (int i = 0; i < nClientesAtivos; i++)
             {
 
                 strcpy(s[i].jogador.cmd, "end");
             }
         }
+        else if (strcmp(cmd, "exit") == 0)
+        {
+    
+            printf("A DESLIGAR EM 3\n");
+            sleep(1);
+            printf("A DESLIGAR EM 2\n");
+            sleep(1);
+            printf("A DESLIGAR EM 1\n");
+            sleep(1);
+            sigHandler(SIGINT);
+        }
         else
         {
             printf("\nCOMANDO IMPOSSIVEL!\n");
         }
 
-    } while (FLAG_SHUTDOWN != 1);
-
-    end();
+    } while (1);
 }

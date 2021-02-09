@@ -20,23 +20,27 @@ void sair()
     FLAG_SHUTDOWN = 1;
     printf("\nCLIENTE VAI DESLIGAR\n");
     sleep(1);
-    //close(fd_ser);
-    close(fd_cli);
-    unlink(fifo_name);
-    //unlink(FIFO_CLI);
-    //unlink(FIFO_SERV);
-    exit(EXIT_SUCCESS);
-}
-
-void trataSig(int i)
-{
-    fprintf(stderr, "\nCLIENTE A TERMINAR VIA TECLADO\n");
     close(fd_ser);
     close(fd_cli);
     unlink(fifo_name);
+    unlink(FIFO_CLI);
+    unlink(FIFO_SERV);
     exit(EXIT_SUCCESS);
 }
 
+void handlerSIG(int sig)
+{
+    if (sig == SIGINT)
+    {
+        fprintf(stderr, "\nCLIENTE A DESLIGAR.....\n");
+        FLAG_SHUTDOWN = 1;
+        sleep(1);
+        close(fd_ser);
+        close(fd_cli);
+        unlink(fifo_name);
+        exit(EXIT_SUCCESS);
+    }
+}
 int main(int argc, char *argv[])
 {
     int res, i = 0, r;
@@ -45,9 +49,9 @@ int main(int argc, char *argv[])
     Cliente c, cr;
     struct timeval tempo;
 
-    if (signal(SIGINT, trataSig) == SIG_ERR)
+    if (signal(SIGINT, handlerSIG) == SIG_ERR)
     {
-        perror("\nNAO FOI POSSIVEL CONFIGURAR SINAL SIGNINT!\n");
+        perror("\n NAO FOI POSSIVEL SINAL SIGNINT\n");
         exit(EXIT_FAILURE);
     }
 
@@ -88,7 +92,6 @@ int main(int argc, char *argv[])
     fprintf(stderr, "\n FIFO do Cliente aberto para leitura.\n");
 
     fd_cli = open(fifo_name, O_RDWR);
-    //fprintf(stderr, "\n CRIOU O FIFO %s!\n", fifo_name);
 
     printf("\nINTRODUZA O SEU NOME: ");
     scanf("%s", c.nome);
@@ -96,24 +99,19 @@ int main(int argc, char *argv[])
     c.acesso = 0;
     //ABRE O FIFO DO SERV PARA ENVIO DO NOME
     fd_ser = open(FIFO_SERV, O_WRONLY);
-    // printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
     write(fd_ser, &c, sizeof(Cliente));
-    //printf("\nENVIEI %s ", c.nome);
-    //close(fd_ser);
 
     res = read(fd_cli, &c, sizeof(Cliente));
     if (res == sizeof(Cliente))
     {
-        fprintf(stderr, "\nO cliente recebeu mensagem do servidor.\n");
         fprintf(stderr, c.cmd);
     }
     else
     {
-        fprintf(stderr, "\nO servidor não conseguiu entregar a mensagem ao cliente.\n");
+        fprintf(stderr, "\nNAO ENVIOU AO SERVIDOR !\n");
     }
     do
     {
-        //printf("\n%s, INTRODUZA UM COMANDO: ", c.nome);
 
         fflush(stdout);
         FD_ZERO(&fds);
@@ -129,7 +127,7 @@ int main(int argc, char *argv[])
         {
             //stdin
             scanf("%s", c.cmd);
-            //printf("TESTE SCANF %s\n", c.cmd);
+
             c.acesso = 1;
             if (strcmp(c.cmd, "fim") == 0)
             {
@@ -137,7 +135,6 @@ int main(int argc, char *argv[])
             }
 
             res = write(fd_ser, &c, sizeof(Cliente));
-            //printf("\nENVIEI %s %s  %d\n", c.nome, c.cmd ,c.pid_cliente);
         }
 
         else if (res > 0 && FD_ISSET(fd_cli, &fds))
@@ -156,7 +153,7 @@ int main(int argc, char *argv[])
             // para imprimir jogo
             else
             {
-                printf("\n%s",cr.cmd);
+                printf("\n%s", cr.cmd);
             }
         }
 
