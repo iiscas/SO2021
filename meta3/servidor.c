@@ -1,6 +1,6 @@
 #include "servidor.h"
-const char *maxplayer;
-const char *gamedir;
+char *maxplayer;
+char *gamedir;
 Cliente c;
 Servidor s[MAXPLAYER];
 
@@ -9,63 +9,62 @@ int nClientesAtivos = 0;
 int i = 0;
 int temporizador = 0;
 int tempo_espera, duracao;
-int findJogos()
+int findJogos(char *gd)
 {
     DIR *folder;
-    struct dirent *entry;
-    int files = 1;
+    struct dirent *dir;
+    int files = 0;
 
-    folder = opendir("./jogos");
+    folder = opendir(gd);
     if (folder == NULL)
     {
         perror("Unable to read directory");
         //return(1);
     }
-
-    while ((entry = readdir(folder)) != NULL)
+    if (folder)
     {
-
-        if (entry->d_name[0] == 'g' && entry->d_name[strlen(entry->d_name) - 1] == 'c')
+        while ((dir = readdir(folder)) != NULL)
         {
-            printf(" - %s\n", entry->d_name);
-        }
-        files++;
-    }
 
-    closedir(folder);
+            if (dir->d_name[0] == 'g' && dir->d_name[strlen(dir->d_name) - 1] == 'c')
+            {
+                printf(" - %s\n", dir->d_name);
+                files++;
+            }
+        }
+        closedir(folder);
+    }
     return files;
 }
-char randomJogo()
+void randomJogo(Servidor *s)
 {
     srand(time(NULL));
     DIR *jogo;
     struct dirent *dirJogos;
     int jogoAtual = 1;
     int jogoRandom;
-    int nJogos = findJogos();
+    int nJogos = findJogos(gamedir);
 
     //NUMERO RANDOM ENTRE 1 O NUMERO DE FILES LIDOS
-    jogoRandom = rand() % nJogos;
+    jogoRandom = rand() % nJogos + 1;
 
-    printf("Jogos disponiveis: %d\n", nJogos);
-    printf("Numero random: %d\n", jogoRandom);
-
-    jogo = opendir("./jogos");
+    jogo = opendir(gamedir);
     if (jogo)
     {
-        while ((dirJogos = readdir(jogo)) != NULL)
+        while ((dirJogos = readdir(jogo)))
         {
-            if (dirJogos->d_name[0] == 'g' && dirJogos->d_name[strlen(dirJogos->d_name) - 1] == 'c')
+            if ((strcmp(dirJogos->d_name, "g_1.c") == 0) || (strcmp(dirJogos->d_name, "g_2.c") == 0))
             {
 
-                printf("Jogo Atual: %d\n", jogoAtual);
+                // printf("Jogo Atual: %d\n", jogoAtual);
 
                 if (jogoRandom == jogoAtual)
                 {
 
-                    printf("Nome do jogo a devolver: %s\n", dirJogos->d_name);
+                    //printf("Nome do jogo a devolver: %s\n", dirJogos->d_name);
                     dirJogos->d_name[strlen(dirJogos->d_name) - 2] = '\0';
-                    return (*dirJogos->d_name);
+                    strcpy(s[nClientesAtivos].jogador.jogo, dirJogos->d_name);
+                    //return (dirJogos->d_name);
                 }
 
                 jogoAtual++;
@@ -74,9 +73,7 @@ char randomJogo()
         closedir(jogo);
     }
 }
-void games()
-{
-}
+
 void comecarCamp()
 {
     printf("\n\n=======================================");
@@ -133,15 +130,15 @@ void eliminaCliente(int pid, Servidor s[])
         }
     }
 }
-struct Servidor *existeCliente(char nome[], Servidor *s)
+int existeCliente(char nome[], Servidor *s)
 {
     int i;
     for (i = 0; i < nClientesAtivos; i++)
     {
         if (strcmp(s[i].jogador.nome, nome) == 0)
-            return &s[i];
+            return 1;
     }
-    return NULL;
+    return 0;
 }
 
 int end()
@@ -157,7 +154,7 @@ void *Jogo(void *dados)
 {
     Servidor *s;
     s = (Servidor *)dados;
-    int p[2], r[2];
+    int p[2], r[2], z = 1;
     char j[50], str[2048], fifo_name[50];
     int resposta, pid_filho;
 
@@ -186,7 +183,7 @@ void *Jogo(void *dados)
         close(p[0]);
         close(r[1]);
     }
-    int z = 1;
+
     while (z != 0)
     {
         while ((resposta = read(r[0], str, sizeof(str))) > 0)
@@ -204,14 +201,11 @@ void *Jogo(void *dados)
 
             while (s->avanca == 0)
             {
-                //printf("\naqui\n");
-                sleep(2);
+
+                sleep(1);
             }
             if (s[i].jogador.cmd[0] != '#')
             {
-                //currentUser=existeCliente(c.nome, s);
-                //c.cmd[strlen(c.cmd) + 1] = '\n';
-                printf("PIPE ANON-> vou mandar isto '%s'\n", s[i].jogador.cmd);
 
                 write(p[1], s[i].jogador.cmd, strlen(s[i].jogador.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
             }
@@ -227,6 +221,7 @@ void *Campeonato(void *dados)
 {
     Servidor *s;
     s = (Servidor *)dados;
+    char g[MAX];
 
     pthread_t jogo;
     printf("O CAMPEONATO VAI COMECAR DAQUI A %d SEGUNDOS\n", tempo_espera);
@@ -236,6 +231,9 @@ void *Campeonato(void *dados)
     //ATRIBUIR JOGO RANDOM PARA CADA JOGADOR
     for (int i = 0; i < nClientesAtivos; i++)
     {
+        /* strcpy(g, randomJogo());
+        strcpy(s[i].jogador.jogo, g);*/
+        //printf("JOGO ATRIBUIDO: %s",findJogos());
         pthread_create(&jogo, NULL, Jogo, (void *)&s[i]);
         //printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
     }
@@ -250,6 +248,7 @@ void *ClienteServidor(void *dados)
     char fifo_name[50];
     int r;
     char cmd[60];
+
     //s.nClientesAtivos = 0;
     //THREAD
     pthread_t campeonatoT;
@@ -277,11 +276,13 @@ void *ClienteServidor(void *dados)
                 {
                     if (c.acesso == 0)
                     {
-                        if (existeCliente(c.nome, s) == NULL)
+                        if (existeCliente(c.nome, s) != 1)
                         {
                             strcpy(s[nClientesAtivos].jogador.nome, c.nome);
                             s[nClientesAtivos].jogador.pid_cliente = c.pid_cliente;
-                            strcpy(s[nClientesAtivos].jogador.jogo, "g_2");
+                            randomJogo(s);
+                            //strcpy(s[nClientesAtivos].jogador.jogo, "g_2");
+
                             strcpy(c.cmd, "INICIOU SESSAO, JA PODE INSERIR COMANDOS!\n");
                             nClientesAtivos++;
 
@@ -384,6 +385,7 @@ int main(int argc, char *argv[])
     act.sa_handler = comecarCamp;
     act.sa_flags = 0;
     sigaction(SIGALRM, &act, NULL);
+    srand(time(NULL));
 
     //WARNINGS
     if (signal(SIGINT, trataSig) == SIG_ERR)
@@ -446,7 +448,7 @@ int main(int argc, char *argv[])
             printf("\n---------------------\n");
             printf("   Jogos disponiveis:");
             printf("\n---------------------\n");
-            findJogos();
+            findJogos(gamedir);
         }
         else if (strcmp(cmd, "exit") == 0)
         {
