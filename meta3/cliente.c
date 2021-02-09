@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     fd_ser = open(FIFO_SERV, O_WRONLY);
     // printf("\nABRI O FIFO DO SERVIDOR %s", FIFO_SERV);
     write(fd_ser, &c, sizeof(Cliente));
-    printf("\nENVIEI %s ", c.nome);
+    //printf("\nENVIEI %s ", c.nome);
     //close(fd_ser);
 
     res = read(fd_cli, &c, sizeof(Cliente));
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     }
     do
     {
-        printf("\n%s, INTRODUZA UM COMANDO: ", c.nome);
+        //printf("\n%s, INTRODUZA UM COMANDO: ", c.nome);
 
         fflush(stdout);
         FD_ZERO(&fds);
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
         {
             //stdin
             scanf("%s", c.cmd);
-            printf("TESTE SCANF %s\n", c.cmd);
+            //printf("TESTE SCANF %s\n", c.cmd);
             c.acesso = 1;
             if (strcmp(c.cmd, "fim") == 0)
             {
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
             }
 
             res = write(fd_ser, &c, sizeof(Cliente));
-            printf("\nENVIEI %s %s  %d\n", c.nome, c.cmd ,c.pid_cliente);
+            //printf("\nENVIEI %s %s  %d\n", c.nome, c.cmd ,c.pid_cliente);
         }
 
         else if (res > 0 && FD_ISSET(fd_cli, &fds))
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
             // para imprimir jogo
             else
             {
-                fprintf(stderr, cr.cmd);
+                printf("\n%s",cr.cmd);
             }
         }
 

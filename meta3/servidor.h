@@ -43,9 +43,10 @@ typedef struct
 typedef struct
 {
     int nJogos;
-    char cmd[80];
+    char cmd[MAX];
     char jogos[2];
     int p[2],r[2];
     int pid_jogo;
+    int avanca;
     Cliente jogador;
 } Servidor;

@@ -22,7 +22,7 @@ void atendeSinal(int signal)
 int main()
 {
 	int prog,i,x;
-	char escolha[4];
+	char escolha[2048];
 
 	//printf("PID: %d\n", getpid());
 	
@@ -34,18 +34,17 @@ int main()
 	}
 	//fprintf(stderr, "\nSINAL CONFIGURADO\n");
 	//fflush(stdout);
-	printf("\n-----BEM VINDO------\n");
-	printf("---JOGO ADIVINHA O NUMERO---\n");
-	printf("\nO JOGADOR GANHA CASO ACERTE\nNO NUMERO QUE O COMPUTADOR PENSOU!\n");
-	fflush(stdout);
+	printf("\n-----BEM VINDO------\n---JOGO ADIVINHA O NUMERO---\nO JOGADOR GANHA CASO ACERTE\nNO NUMERO QUE O COMPUTADOR PENSOU!\n");
+	//fflush(stdout);
 	do
 	{
 		printf("\nDIGITE UM NUMERO ENTRE 0 E 2: ");
 		fflush(stdout);
 		scanf("%s",escolha);
-		fflush(stdout);
+		printf("\nRECEBEU ISTO %s\n",escolha);
+		//fflush(stdout);
 		//x=atoi(escolha);
-		if ((strcmp(escolha,"0")==0) /* || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0) */)
+		if ((strcmp(escolha,"0")==0)  || (strcmp(escolha,"1")==0) || (strcmp(escolha,"2")==0) )
 		{
 
 			srand((unsigned)time(NULL));
@@ -66,9 +65,6 @@ int main()
 			printf("\nO num de pontos e: %d", pontos);
 			printf("\n");
 			sleep(1);
-		}
-		else{
-			printf("RECEBEU ISTO %s",escolha);
 		}
 
 	} while (1);

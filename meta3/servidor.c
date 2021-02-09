@@ -76,10 +76,6 @@ char randomJogo()
 }
 void games()
 {
-    printf("\n---------------------\n");
-    printf("   Jogos disponiveis:");
-    printf("\n---------------------\n");
-    findJogos();
 }
 void comecarCamp()
 {
@@ -137,7 +133,7 @@ void eliminaCliente(int pid, Servidor s[])
         }
     }
 }
-struct Servidor* existeCliente(char nome[], Servidor* s)
+struct Servidor *existeCliente(char nome[], Servidor *s)
 {
     int i;
     for (i = 0; i < nClientesAtivos; i++)
@@ -147,6 +143,7 @@ struct Servidor* existeCliente(char nome[], Servidor* s)
     }
     return NULL;
 }
+
 int end()
 {
     printf("A TERMINAR O SERVIDOR....ADEUS...\n");
@@ -197,15 +194,30 @@ void *Jogo(void *dados)
             str[resposta] = '\0';
             strcpy(c.cmd, str);
 
-            if ((fd_cli = open(fifo_name, O_WRONLY)) < 0)
-            {
-                printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
-            }
-            else
+            if ((fd_cli = open(fifo_name, O_WRONLY)) > 0)
             {
                 res = write(fd_cli, &c, sizeof(Cliente));
+
+                close(fd_cli);
+                //printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
             }
+
+            while (s->avanca == 0)
+            {
+                //printf("\naqui\n");
+                sleep(2);
+            }
+            if (s[i].jogador.cmd[0] != '#')
+            {
+                //currentUser=existeCliente(c.nome, s);
+                //c.cmd[strlen(c.cmd) + 1] = '\n';
+                printf("PIPE ANON-> vou mandar isto '%s'\n", s[i].jogador.cmd);
+
+                write(p[1], s[i].jogador.cmd, strlen(s[i].jogador.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
+            }
+            s->avanca = 0;
         }
+
         close(r[0]);
         close(p[1]);
     }
@@ -232,7 +244,7 @@ void *ClienteServidor(void *dados)
 {
     //fprintf(stderr, "\n Cliente com o PID %d esta a tentar conectar.\n", s.num_jogadores[s.nClientesAtivos].pid_cliente);
     Servidor *s;
-    Servidor* currentUser;
+    Servidor *currentUser;
     s = (Servidor *)dados;
     //msgForservidor=s
     char fifo_name[50];
@@ -274,7 +286,7 @@ void *ClienteServidor(void *dados)
                             nClientesAtivos++;
 
                             fprintf(stderr, "\n%s INICIOU SESSAO\n", c.nome);
-                            printf("NOME DO PIPE: %s\n", fifo_name);
+                            //printf("NOME DO PIPE: %s\n", fifo_name);
                             r = write(fd_cli, &c, sizeof(Cliente));
 
                             if (nClientesAtivos > 1 && temporizador == 0)
@@ -299,7 +311,7 @@ void *ClienteServidor(void *dados)
                             //fprintf(stderr, "\n----FIFO do cliente %s aberto para escrita.\n", fifo_name);
                             for (int i = 0; i < nClientesAtivos; i++)
                             {
-                                printf("PIDS: %d \n", s[i].jogador.pid_cliente);
+                                //printf("PIDS: %d \n", s[i].jogador.pid_cliente);
                                 if (c.pid_cliente == s[i].jogador.pid_cliente)
                                 {
 
@@ -330,17 +342,18 @@ void *ClienteServidor(void *dados)
                         }
                         else if (c.cmd[0] != '#')
                         {
-                            printf("AQUI!!!!!!\n");
+                            //printf("AQUI!!!!!!\n");
                             for (int i = 0; i < nClientesAtivos; i++)
                             {
                                 if (c.pid_cliente == s[i].jogador.pid_cliente)
                                 {
-                                    //currentUser=existeCliente(c.nome, s);
-                                    /* c.cmd[strlen(c.cmd) + 1] = '\n';*/
-                                    printf("vou mandar isto '%s'\n", c.cmd);
+                                    c.cmd[strlen(c.cmd) + 1] = '\0';
+                                    c.cmd[strlen(c.cmd)] = '\n';
 
-                                    r = write(s[i].p[1], &c.cmd, strlen(c.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
-                                  
+                                    strcpy(s[i].jogador.cmd, c.cmd);
+                                    //printf("--->vou mandar isto '%s'\n", s[i].jogador.cmd);
+                                    s[i].avanca = 1;
+                                    //r = write(s[i].p[1], c.cmd, strlen(c.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
                                 }
                             }
                         }
@@ -424,14 +437,16 @@ int main(int argc, char *argv[])
                 printf("\n==== JOGADORES NO CAMPEONATO ====\n");
                 for (int i = 0; i < nClientesAtivos; i++)
                 {
-
                     printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
                 }
             }
         }
         else if (strcmp(cmd, "games") == 0)
         {
-            games();
+            printf("\n---------------------\n");
+            printf("   Jogos disponiveis:");
+            printf("\n---------------------\n");
+            findJogos();
         }
         else if (strcmp(cmd, "exit") == 0)
         {
