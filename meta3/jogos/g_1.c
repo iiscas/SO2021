@@ -25,6 +25,7 @@ void handlerSIG(int sig)
 int main()
 {
 	int prog, jogador, escolha, resultado, i;
+
 	if (signal(SIGUSR1, handlerSIG) == SIG_ERR)
 	{
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");

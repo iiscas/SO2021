@@ -16,13 +16,13 @@
 
 int nthread;
 #define MAXPLAYER 10
-#define NTHREAD nthread
+
 #define MAX 2048
 //nome do fifo de cada cliente
 #define FIFO_CLI "CLI%d"
 //nome do fifo do servidor
 #define FIFO_SERV "SERV"
-#define FIFO_ANON "ANON"
+
 int FLAG_SHUTDOWN = 0;
 int FLAG_ADICIONA = 0;
 int FLAG_CAMPEONATO = 0;
@@ -34,6 +34,8 @@ typedef struct
     int pid_cliente;
     char nome[MAX];
     char cmd[MAX];
+    int pontuacao;
+    int pausa;
     int acesso; // ver se é a primeira msg
     char jogo[MAX];
 } Cliente;
@@ -47,6 +49,7 @@ typedef struct
     char jogoAtribuido[MAX];
     int p[2],r[2];
     int pid_jogo;
+    int estadoJogo;
     int avanca;
     Cliente jogador;
 } Servidor;

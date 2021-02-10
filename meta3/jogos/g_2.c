@@ -42,7 +42,7 @@ int main()
 		fflush(stdout);
 		scanf("%s", escolha);
 		//printf("\nRECEBEU ISTO %s\n",escolha);
-		//fflush(stdout);
+		fflush(stdout);
 		//x=atoi(escolha);
 		if ((strcmp(escolha, "0") == 0) || (strcmp(escolha, "1") == 0) || (strcmp(escolha, "2") == 0))
 		{

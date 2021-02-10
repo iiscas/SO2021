@@ -26,17 +26,8 @@ typedef struct
     int pid_cliente;
     char nome[MAX];
     char cmd[MAX];
+    int pontuacao;
+    int pausa;
     int acesso; // ver se é a primeira msg
     char jogo[MAX];
 } Cliente;
-
-/* //RESPOSTA SERVIDOR -> CLIENTE
-typedef struct
-{
-    int nJogos;
-    char cmd[MAX];
-    char jogos[2];
-    int nClientesAtivos;
-    Cliente num_jogadores[30];
-} Servidor;
- */

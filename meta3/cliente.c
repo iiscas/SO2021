@@ -41,6 +41,13 @@ void handlerSIG(int sig)
         exit(EXIT_SUCCESS);
     }
 }
+void handlerSIG2(int sig)
+{
+    if (sig == SIGUSR1)
+    {
+        fprintf(stderr, "\nVOLTE A INSERIR UM NUMERO\n");
+    }
+}
 int main(int argc, char *argv[])
 {
     int res, i = 0, r;
@@ -48,6 +55,7 @@ int main(int argc, char *argv[])
     fd_set fds;
     Cliente c, cr;
     struct timeval tempo;
+    signal(SIGUSR1, handlerSIG2);
 
     if (signal(SIGINT, handlerSIG) == SIG_ERR)
     {
@@ -151,6 +159,10 @@ int main(int argc, char *argv[])
                 printf("\n%s, TEM ESTE JOGO ATRIBUIDO: %s\n", cr.nome, cr.jogo);
             }
             // para imprimir jogo
+            else if (cr.pausa == 1)
+            {
+                fprintf(stderr, "\nJOGO RETOMADO!, INSIRA ALGO\n");
+            }
             else
             {
                 printf("\n%s", cr.cmd);
