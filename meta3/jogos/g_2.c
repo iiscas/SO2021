@@ -13,9 +13,7 @@ int FLAG_TERMINA = 0;
 
 void atendeSinal(int signal)
 {
-	fprintf(stderr, "\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
-	fflush(stderr);
-	FLAG_TERMINA = 1;
+	fprintf(stderr, "\nJOGO --> SINAL RECEBIDO... VAI TERMINAR...\n", signal);
 	exit(pontos);
 }
 
@@ -42,7 +40,7 @@ int main()
 		fflush(stdout);
 		scanf("%s", escolha);
 		//printf("\nRECEBEU ISTO %s\n",escolha);
-		//fflush(stdout);
+		fflush(stdout);
 		//x=atoi(escolha);
 		if ((strcmp(escolha, "0") == 0) || (strcmp(escolha, "1") == 0) || (strcmp(escolha, "2") == 0))
 		{
@@ -71,5 +69,5 @@ int main()
 		{
 			printf("-- NUMERO SO PODE SER 0, 1 OU 2 !\n");
 		}
-	} while (FLAG_TERMINA!=1);
+	} while (1);
 }

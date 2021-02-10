@@ -5,15 +5,13 @@ Cliente c;
 Servidor s[MAXPLAYER];
 
 int res;
-int desligarJogo = 0;
 int nClientesAtivos = 0;
 int i = 0;
 int temporizador = 0;
 int tempo_espera, duracao;
 int campStarted = 0;
-int end()
-{
-}
+int campFinished = 0;
+
 int findJogos(char *gd)
 {
     DIR *folder;
@@ -78,7 +76,6 @@ void randomJogo(Servidor *s)
         closedir(jogo);
     }
 }
-
 void comecarCamp()
 {
     printf("\n\n=======================================");
@@ -157,21 +154,59 @@ int existeCliente(char nome[], Servidor *s)
     }
     return 0;
 }
-/* void handlerAlarm(int sig)
+void handlerAlarm(int sig)
 {
+    if (sig == SIGALRM)
+    {
+        for (int i = 0; i < nClientesAtivos; i++)
+        {
 
-    //printf("ACABOU O TEMPO \n");
-    alarm(duracao);
-    terminar = 1;
+            /* printf("CLIENTE--> %s (%d)\n", s[i].jogador.nome, s[i].jogador.pid_cliente);
+            printf("JOGO--> (%d)\n", s[i].pid_jogo); */
+
+            kill(s[i].jogador.pid_cliente, SIGUSR1);
+            kill(s[i].pid_jogo, SIGUSR1);
+            sleep(2);
+        }
+    }
+}
+void *waitJogo(void *i)
+{
+    Servidor *s;
+    s = (Servidor *)i;
+    char fifo_cliente[50];
+
+    int pontos;
+
+    waitpid(s->pid_jogo, &pontos, 0);
+    if (WIFEXITED(pontos))
+    {
+        printf("JOGO TERMINOU COM ESTADO %d\n", WEXITSTATUS(pontos));
+        s->jogador.pontuacao = WEXITSTATUS(pontos);
+        //printf("----> %d", s->jogador.pontuacao);
+    }
+/* 
     campStarted = 0;
-    //exit(0);
-} */
+    campFinished = 1;
 
+    sprintf(fifo_cliente, "CLI%d", s->jogador.pid_cliente);
+
+    if ((fd_cli = open(fifo_cliente, O_WRONLY)) < 0)
+    {
+        printf("Erro a abrir o fifo do cliente %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
+    }
+    else
+    {
+        c.pontuacao = s->jogador.pontuacao;
+        write(fd_cli, &c, sizeof(Cliente));
+    } */
+}
 void *Jogo(void *dados)
 {
     Servidor *s;
     s = (Servidor *)dados;
-    int p[2], r[2], z = 1, estado, resposta, pid_filho, pid;
+    pthread_t kJogo;
+    int p[2], r[2], z = 1, estado, resposta;
     char str[2048], fifo_name[50];
     char *jogo = s->jogador.jogo, *dir = gamedir;
     char *tmp = strdup(dir);
@@ -182,14 +217,12 @@ void *Jogo(void *dados)
     pipe(p);
     pipe(r);
     sprintf(fifo_name, "CLI%d", s->jogador.pid_cliente);
-    pid_filho = fork();
+    s->pid_jogo = fork();
 
-    if (pid_filho == 0)
+    if (s->pid_jogo == 0)
     {
-        pid = getpid();
-        printf("GAME PID: %d\n", pid);
+
         printf("JOGO %s PARA CLIENTE %s COMECOU! \n", s->jogador.jogo, s->jogador.nome);
-        //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
 
         close(1);    // fecha o stdout do jogo
         close(r[0]); // fecha o stdin do pipe
@@ -201,59 +234,46 @@ void *Jogo(void *dados)
         dup(p[0]);
         close(p[0]);
         execl(s->jogoAtribuido, s->jogoAtribuido, NULL);
-        exit(4);
+        //exit(4);
     }
     else
     {
         close(p[0]);
         close(r[1]);
-    }
 
-    while ((resposta = read(r[0], str, sizeof(str))) > 0 || s->terminar == 0)
-    {
-        str[resposta] = '\0';
-        strcpy(c.cmd, str);
-
-        if ((fd_cli = open(fifo_name, O_WRONLY)) > 0)
+        pthread_create(&kJogo, NULL, waitJogo, (void *)&s);
+        while (campStarted == 1)
         {
-            res = write(fd_cli, &c, sizeof(Cliente));
+            while ((resposta = read(r[0], str, sizeof(str))) > 0)
+            {
+                str[resposta] = '\0';
+                strcpy(c.cmd, str);
 
-            close(fd_cli);
+                if ((fd_cli = open(fifo_name, O_WRONLY)) > 0)
+                {
+                    res = write(fd_cli, &c, sizeof(Cliente));
+
+                    close(fd_cli);
+                }
+                while (s->avanca == 0)
+                {
+
+                    sleep(1);
+                }
+                if (s->jogador.cmd[0] != '#')
+                {
+
+                    write(p[1], s->jogador.cmd, strlen(s->jogador.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
+                }
+                s->avanca = 0;
+            }
         }
-        while (s->avanca == 0)
-        {
-
-            sleep(1);
-        }
-        if (s->jogador.cmd[0] != '#')
-        {
-
-            write(p[1], s->jogador.cmd, strlen(s->jogador.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
-        }
-        s->avanca = 0;
-
-        sleep(1);
-        printf("e para terminar. %d\n", s->terminar);
-        sleep(2);
     }
     close(r[0]);
     close(p[1]);
-    sleep(1);
-    printf("--e para terminar. %d\n", s->terminar);
-    kill(pid_filho, SIGUSR1);
-    printf("e para terminar. Vou aguardar que o filho/jogo termine\n");
 
-    fflush(stdout);
-    wait(&estado);
-    if (WIFEXITED(estado))
-    {
-        printf("jogo terminou com codigo %d\n", WEXITSTATUS(estado));
-        s->jogador.pontuacao = WEXITSTATUS(estado);
-        fflush(stdout);
-    }
-    pthread_exit(NULL);
+    pthread_join(kJogo, NULL);
 }
-
 void *Campeonato(void *dados)
 {
     Servidor *s;
@@ -265,60 +285,40 @@ void *Campeonato(void *dados)
     printf("O CAMPEONATO VAI COMECAR DAQUI A %d SEGUNDOS\n", tempo_espera);
     sleep(tempo_espera);
     comecarCamp();
-    //alarm(duracao);
+    alarm(duracao);
     campStarted = 1;
-    //ATRIBUIR JOGO RANDOM PARA CADA JOGADOR
-    if (campStarted == 1)
+    for (int i = 0; i < nClientesAtivos; i++)
     {
-        for (int i = 0; i < nClientesAtivos; i++)
-        {
 
-            s[i].terminar = 0;
-            pthread_create(&jogo[i], NULL, Jogo, (void *)&s[i]);
+        s[i].terminar = 0;
+        pthread_create(&jogo[i], NULL, Jogo, (void *)&s[i]);
+    }
 
-            //printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
-        }
-    }
-    while (campStarted == 1)
+    //pthread_join(jogo, NULL);
+
+    for (int i = 0; i < nClientesAtivos; i++)
     {
-        sleep(duracao);
-        campStarted = 0;
-        //s[i].terminar = 0;
-        //s->terminar = 1;
+
+        printf("CLIENTE %s  (%d)\n", s[i].jogador.nome, s[i].terminar);
+        pthread_join(jogo[i], NULL);
     }
-    if (campStarted == 0)
+    int maior = 0, pos = 0;
+    for (int i = 0; i < nClientesAtivos; i++)
     {
-        for (int i = 0; i < nClientesAtivos; i++)
+        if (s[i].jogador.pontuacao > maior)
         {
-            printf("Vou pedir a thread %d para terminar\n", i);
-            fflush(stdout);
-            s[i].terminar = 1;
-            printf(".CLIENTE %s  (%d)\n", s[i].jogador.nome, s[i].terminar);
-            pthread_join(jogo[i], NULL);
-            printf("....terminou! (%d)\n");
-            free(resultado);
+            maior = s[i].jogador.pontuacao;
+            pos = i;
         }
-        int maior = 0, pos = 0;
-        for (int i = 0; i < nClientesAtivos; i++)
-        {
-            if (s[i].jogador.pontuacao > maior)
-            {
-                maior = s[i].jogador.pontuacao;
-                pos = i;
-            }
-        }
-        strcpy(c.cmd, "VENCEU O CAMPEONATO!!!");
-        write(fd_cli, &c, sizeof(Cliente));
     }
+    strcpy(c.cmd, "VENCEU O CAMPEONATO!!!");
+    write(fd_cli, &c, sizeof(Cliente));
 }
-
 void *ClienteServidor(void *dados)
 {
-    //fprintf(stderr, "\n Cliente com o PID %d esta a tentar conectar.\n", s.num_jogadores[s.nClientesAtivos].pid_cliente);
+    
     Servidor *s;
-    Servidor *currentUser;
     s = (Servidor *)dados;
-    //msgForservidor=s
     char fifo_name[50];
     int r;
     char cmd[60];
@@ -342,13 +342,15 @@ void *ClienteServidor(void *dados)
 
         else
         {
+
             if (r == sizeof(Cliente))
             {
+
                 if (nClientesAtivos < 30)
                 {
                     if (c.acesso == 0)
                     {
-                        fprintf(stderr, "\n CLIENTE %s COM PID %d QUER SE REGISTAR!\n", c.nome, c.pid_cliente);
+                        //fprintf(stderr, "\n CLIENTE %s COM PID %d QUER SE REGISTAR!\n", c.nome, c.pid_cliente);
                         if (existeCliente(c.nome, s) != 1)
                         {
 
@@ -365,7 +367,7 @@ void *ClienteServidor(void *dados)
                             //printf("NOME DO PIPE: %s\n", fifo_name);
                             r = write(fd_cli, &c, sizeof(Cliente));
 
-                            if (nClientesAtivos >= 1 && temporizador == 0)
+                            if (nClientesAtivos >= 2 && temporizador == 0)
                             {
                                 temporizador = 1;
                                 pthread_create(&campeonatoT, NULL, Campeonato, (void *)s);
@@ -461,7 +463,6 @@ void *ClienteServidor(void *dados)
 }
 int main(int argc, char *argv[])
 {
-    //s.nClientesAtivos = 0;
     int i = 0, res, r, n, estado;
     char *ptr, *ptr1, *ptr2, fifo_name[20], cmd[90];
     char str[40];
@@ -469,6 +470,7 @@ int main(int argc, char *argv[])
     struct timeval tempo;
 
     srand(time(NULL));
+    signal(SIGALRM, handlerAlarm);
 
     //WARNINGS
     if (signal(SIGINT, sigHandler) == SIG_ERR)
@@ -583,8 +585,11 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(cmd, "end") == 0)
         {
-            printf("\n TERMINAR CAMPEONATO.....\n");
-            campStarted = 0;
+            if (campStarted == 1)
+            {
+                printf("\n TERMINAR CAMPEONATO.....\n");
+                raise(SIGALRM);
+            }
         }
         else if (strcmp(cmd, "exit") == 0)
         {

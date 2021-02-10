@@ -13,13 +13,11 @@
 #include <sys/wait.h>
 
 int pontos = 0;
-int FLAG_TERMINA = 0;
 
-void handlerSIG(int sig)
+
+void atendeSinal(int signal)
 {
-	printf("\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
-	fflush(stderr);
-	FLAG_TERMINA = 1;
+	fprintf(stderr, "\nJOGO --> SINAL RECEBIDO... VAI TERMINAR...\n", signal);
 	exit(pontos);
 }
 
@@ -27,7 +25,7 @@ int main()
 {
 	int prog, jogador, escolha, resultado, i;
 
-	if (signal(SIGUSR1, handlerSIG) == SIG_ERR)
+	if (signal(SIGUSR1, atendeSinal) == SIG_ERR)
 	{
 		perror("\n[ERRO] Não foi possivel configurar o sinal SIGUSR1\n");
 		exit(EXIT_FAILURE);
@@ -80,5 +78,5 @@ int main()
 			printf(" -- NUMERO SO PODE SER O OU 1 !\n");
 		}
 
-	} while (FLAG_TERMINA != 1);
+	} while (1);
 }
