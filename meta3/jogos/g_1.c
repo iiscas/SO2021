@@ -18,6 +18,7 @@ int FLAG_TERMINA = 0;
 void handlerSIG(int sig)
 {
 	printf("\nSINAL %d RECEBIDO... VAI TERMINAR...", signal);
+	fflush(stderr);
 	FLAG_TERMINA = 1;
 	exit(pontos);
 }

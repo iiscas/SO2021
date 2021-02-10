@@ -49,7 +49,7 @@ typedef struct
     char jogoAtribuido[MAX];
     int p[2],r[2];
     int pid_jogo;
-    int estadoJogo;
+    int terminar;
     int avanca;
     Cliente jogador;
 } Servidor;

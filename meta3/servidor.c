@@ -10,7 +10,6 @@ int nClientesAtivos = 0;
 int i = 0;
 int temporizador = 0;
 int tempo_espera, duracao;
-int terminar = 0;
 int campStarted = 0;
 int end()
 {
@@ -158,23 +157,15 @@ int existeCliente(char nome[], Servidor *s)
     }
     return 0;
 }
-void handlerAlarm(int sig)
+/* void handlerAlarm(int sig)
 {
-    if (sig == SIGALRM)
-    {
-        desligarJogo = 1;
 
-        //exit(0);
-    }
-}
-void handlerJogo(int sig)
-{
-    if (sig == SIGUSR1)
-    {
-        //end();
-        exit(0);
-    }
-}
+    //printf("ACABOU O TEMPO \n");
+    alarm(duracao);
+    terminar = 1;
+    campStarted = 0;
+    //exit(0);
+} */
 
 void *Jogo(void *dados)
 {
@@ -196,6 +187,7 @@ void *Jogo(void *dados)
     if (pid_filho == 0)
     {
         pid = getpid();
+        printf("GAME PID: %d\n", pid);
         printf("JOGO %s PARA CLIENTE %s COMECOU! \n", s->jogador.jogo, s->jogador.nome);
         //printf("Filho para o %s (PID: %d)\n", s->jogador.nome, s->jogador.pid_cliente);
 
@@ -217,34 +209,7 @@ void *Jogo(void *dados)
         close(r[1]);
     }
 
-    while (terminar == 0)
-    {
-        while ((resposta = read(r[0], str, sizeof(str))) > 0)
-        {
-            str[resposta] = '\0';
-            strcpy(c.cmd, str);
-
-            if ((fd_cli = open(fifo_name, O_WRONLY)) > 0)
-            {
-                res = write(fd_cli, &c, sizeof(Cliente));
-
-                close(fd_cli);
-            }
-            if (s->avanca != 0)
-            {
-                write(p[1], s->jogador.cmd, strlen(s->jogador.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
-
-                s->avanca = 0;
-            }
-        }
-
-        close(r[0]);
-        close(p[1]);
-    }
-
-    sleep(1);
-    kill(pid, SIGUSR1);
-    while ((resposta = read(r[0], str, sizeof(str))) > 0)
+    while ((resposta = read(r[0], str, sizeof(str))) > 0 || s->terminar == 0)
     {
         str[resposta] = '\0';
         strcpy(c.cmd, str);
@@ -255,15 +220,36 @@ void *Jogo(void *dados)
 
             close(fd_cli);
         }
+        while (s->avanca == 0)
+        {
+
+            sleep(1);
+        }
+        if (s->jogador.cmd[0] != '#')
+        {
+
+            write(p[1], s->jogador.cmd, strlen(s->jogador.cmd)); // escreve no cliente i o numero, será que não está a enviar a estrutura bem?
+        }
+        s->avanca = 0;
+
+        sleep(1);
+        printf("e para terminar. %d\n", s->terminar);
+        sleep(2);
     }
+    close(r[0]);
+    close(p[1]);
+    sleep(1);
+    printf("--e para terminar. %d\n", s->terminar);
+    kill(pid_filho, SIGUSR1);
     printf("e para terminar. Vou aguardar que o filho/jogo termine\n");
+
     fflush(stdout);
-    waitpid(pid, &estado, 0);
+    wait(&estado);
     if (WIFEXITED(estado))
     {
         printf("jogo terminou com codigo %d\n", WEXITSTATUS(estado));
         s->jogador.pontuacao = WEXITSTATUS(estado);
-        //fflush(stdout);
+        fflush(stdout);
     }
     pthread_exit(NULL);
 }
@@ -275,11 +261,11 @@ void *Campeonato(void *dados)
     char g[MAX];
     int *resultado;
 
-    pthread_t jogo;
+    pthread_t jogo[nClientesAtivos];
     printf("O CAMPEONATO VAI COMECAR DAQUI A %d SEGUNDOS\n", tempo_espera);
     sleep(tempo_espera);
     comecarCamp();
-    alarm(duracao);
+    //alarm(duracao);
     campStarted = 1;
     //ATRIBUIR JOGO RANDOM PARA CADA JOGADOR
     if (campStarted == 1)
@@ -287,10 +273,18 @@ void *Campeonato(void *dados)
         for (int i = 0; i < nClientesAtivos; i++)
         {
 
-            pthread_create(&jogo, NULL, Jogo, (void *)&s[i]);
+            s[i].terminar = 0;
+            pthread_create(&jogo[i], NULL, Jogo, (void *)&s[i]);
 
             //printf(" Jogador %s --- Jogo atribuido: %s --- PID: %d\n", s[i].jogador.nome, s[i].jogador.jogo, s[i].jogador.pid_cliente);
         }
+    }
+    while (campStarted == 1)
+    {
+        sleep(duracao);
+        campStarted = 0;
+        //s[i].terminar = 0;
+        //s->terminar = 1;
     }
     if (campStarted == 0)
     {
@@ -298,9 +292,10 @@ void *Campeonato(void *dados)
         {
             printf("Vou pedir a thread %d para terminar\n", i);
             fflush(stdout);
-            terminar = 1;
-            pthread_join(jogo, (void *)&resultado);
-            printf("....terminou! (%d)\n", *resultado);
+            s[i].terminar = 1;
+            printf(".CLIENTE %s  (%d)\n", s[i].jogador.nome, s[i].terminar);
+            pthread_join(jogo[i], NULL);
+            printf("....terminou! (%d)\n");
             free(resultado);
         }
         int maior = 0, pos = 0;
@@ -472,8 +467,7 @@ int main(int argc, char *argv[])
     char str[40];
     int z, *resultado;
     struct timeval tempo;
-    signal(SIGINT, handlerAlarm);
-    signal(SIGUSR1, handlerJogo);
+
     srand(time(NULL));
 
     //WARNINGS
