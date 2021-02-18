@@ -181,11 +181,11 @@ void *waitJogo(void *i)
     waitpid(s->pid_jogo, &pontos, 0);
     if (WIFEXITED(pontos))
     {
-        printf("JOGO TERMINOU COM ESTADO %d\n", WEXITSTATUS(pontos));
+        printf("JOGO DO CLIENTE %s TERMINOU COM  %d PONTOS \n",s->jogador.nome,WEXITSTATUS(pontos));
         s->jogador.pontuacao = WEXITSTATUS(pontos);
-        //printf("----> %d", s->jogador.pontuacao);
+        //printf("\n----> %d .....", s->jogador.pontuacao);
     }
-/* 
+ 
     campStarted = 0;
     campFinished = 1;
 
@@ -197,9 +197,10 @@ void *waitJogo(void *i)
     }
     else
     {
+        sprintf(c.cmd, "PONTUACAO TOTAL:  %d\n",s->jogador.pontuacao);
         c.pontuacao = s->jogador.pontuacao;
         write(fd_cli, &c, sizeof(Cliente));
-    } */
+    } 
 }
 void *Jogo(void *dados)
 {
@@ -241,7 +242,7 @@ void *Jogo(void *dados)
         close(p[0]);
         close(r[1]);
 
-        pthread_create(&kJogo, NULL, waitJogo, (void *)&s);
+        pthread_create(&kJogo, NULL, waitJogo, (void *)s);
         while (campStarted == 1)
         {
             while ((resposta = read(r[0], str, sizeof(str))) > 0)
@@ -299,7 +300,7 @@ void *Campeonato(void *dados)
     for (int i = 0; i < nClientesAtivos; i++)
     {
 
-        printf("CLIENTE %s  (%d)\n", s[i].jogador.nome, s[i].terminar);
+        //printf("CLIENTE %s  (%d)\n", s[i].jogador.nome, s[i].terminar);
         pthread_join(jogo[i], NULL);
     }
     int maior = 0, pos = 0;
