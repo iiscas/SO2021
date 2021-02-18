@@ -23,8 +23,8 @@ void sair()
     close(fd_ser);
     close(fd_cli);
     unlink(fifo_name);
-    //unlink(FIFO_CLI);
-    //unlink(FIFO_SERV);
+    unlink(FIFO_CLI);
+    unlink(FIFO_SERV);
     exit(EXIT_SUCCESS);
 }
 
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
             //ABRE O FIFO DO SERV PARA ENVIO DO NOME
             fd_ser = open(FIFO_SERV, O_WRONLY);
-            printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
+            //printf("\nABRI O FIFO DO CLIENTE %s", FIFO_SERV);
 
             res = write(fd_ser, &c, sizeof(Cliente));
             //printf("\nENVIEI %s %s %s %d\n", c.nome, c.cmd ,c.jogoAtribuido,c.pid_cliente);

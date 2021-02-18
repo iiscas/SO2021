@@ -31,18 +31,18 @@ char *recebeComando(char *cmd)
     }
     return str;
 }
-void eliminaCliente(int pid)
+void eliminaCliente(int pid, Servidor *s)
 {
     int i;
-    for (i = 0; i < s.nClientesAtivos && s.num_jogadores[i].pid_cliente != pid; i++)
-        ;
-    if (i != s.nClientesAtivos)
+    for (i = 0; i < s->nClientesAtivos; i++)
     {
-        printf("ADEUS %s ....\n", s.num_jogadores[i].nome);
-        s.num_jogadores[i] = s.num_jogadores[s.nClientesAtivos - 1];
-        s.nClientesAtivos--;
-        printf("\nCLIENTE ELIMINADO: %s ", s.num_jogadores[i].nome);
-        printf("\nNR DE CLIENTES AINDA ATIVOS: %d\n", s.nClientesAtivos);
+        if (pid == s->num_jogadores[i].pid_cliente)
+        {
+            printf("ADEUS %s ....\n", s->num_jogadores[i].nome);
+            s->num_jogadores[i] = s->num_jogadores[s->nClientesAtivos - 1];
+            s->nClientesAtivos--;
+            printf("\nNR DE CLIENTES AINDA ATIVOS: %d\n", s->nClientesAtivos);
+        }
     }
 }
 int existeCliente(char nome[])
@@ -218,17 +218,19 @@ int main(int argc, char *argv[])
                 // printf("\nK\n");
                 for (int i = 0; i < s.nClientesAtivos; i++)
                 {
+                    printf("COMANDO: %s\n", recebeComando(cmd));
                     if (strcmp(recebeComando(cmd), s.num_jogadores[i].nome) == 0)
-                        eliminaCliente(s.num_jogadores[i].pid_cliente);
-                    strcpy(c.jogoAtribuido, "quit");
+                    {
+                        strcpy(c.jogoAtribuido, "quit");
 
-                    eliminaCliente(s.num_jogadores[i].pid_cliente);
-                    sprintf(fifo_name, FIFO_CLI, c.pid_cliente);
-                    //printf("NOME DO PIPE: %s\n", fifo_name);
-                    fd_cli = open(fifo_name, O_WRONLY);
-                    r = write(fd_cli, &c, sizeof(Cliente));
+                        sprintf(fifo_name, FIFO_CLI, s.num_jogadores[i].pid_cliente);
+                        printf("NOME DO PIPE: %s\n", fifo_name);
+                        fd_cli = open(fifo_name, O_WRONLY);
+                        r = write(fd_cli, &c, sizeof(Cliente));
 
-                    close(fd_cli);
+                        close(fd_cli);
+                        eliminaCliente(s.num_jogadores[i].pid_cliente, &s);
+                    }
                 }
             }
 
@@ -260,7 +262,7 @@ int main(int argc, char *argv[])
                     if (strcmp(c.cmd, "#mygame") == 0)
                     {
 
-                        for (int i = 0; i < s.nClientesAtivos; i++)
+                        for (int i = 0; i <= s.nClientesAtivos; i++)
                         {
                             if (c.pid_cliente == s.num_jogadores[i].pid_cliente)
                             {
@@ -288,14 +290,13 @@ int main(int argc, char *argv[])
                                 printf("%s pretende desistir do campeonato!\n", s.num_jogadores[i].nome);
                                 strcpy(c.jogoAtribuido, "quit");
 
-                                eliminaCliente(s.num_jogadores[i].pid_cliente);
+                                eliminaCliente(s.num_jogadores[i].pid_cliente, &s);
                                 sprintf(fifo_name, FIFO_CLI, c.pid_cliente);
                                 //printf("NOME DO PIPE: %s\n", fifo_name);
                                 fd_cli = open(fifo_name, O_WRONLY);
                                 r = write(fd_cli, &c, sizeof(Cliente));
 
                                 close(fd_cli);
-                                //printf("ENVIEI ISTO %s", c.jogoAtribuido);
                             }
                         }
                     }

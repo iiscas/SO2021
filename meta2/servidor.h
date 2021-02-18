@@ -40,5 +40,5 @@ typedef struct{
     char cmd[80];
     char jogos[2];
     int nClientesAtivos;
-    Cliente num_jogadores[2];
+    Cliente num_jogadores[30];
 }Servidor;
